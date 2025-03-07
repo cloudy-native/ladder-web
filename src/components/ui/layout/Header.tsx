@@ -10,7 +10,11 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 import { ColorModeButton } from "../color-mode";
 
-export const Header = () => {
+interface HeaderProps {
+  signOut?: () => void;
+}
+
+export const Header = ({ signOut }: HeaderProps) => {
   return (
     <Box as="header" py={4} px={6}>
       <Flex align="center">
@@ -26,9 +30,20 @@ export const Header = () => {
         <Spacer />
         <HStack>
           <ColorModeButton />
-          <Button variant="outline" colorScheme="whiteAlpha" size="sm">
-            Sign In
-          </Button>
+          {signOut ? (
+            <Button 
+              variant="outline" 
+              colorScheme="whiteAlpha" 
+              size="sm"
+              onClick={signOut}
+            >
+              Sign Out
+            </Button>
+          ) : (
+            <Button variant="outline" colorScheme="whiteAlpha" size="sm">
+              Sign In
+            </Button>
+          )}
         </HStack>
       </Flex>
     </Box>
