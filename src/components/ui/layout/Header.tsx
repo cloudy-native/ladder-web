@@ -33,14 +33,13 @@ export const Header = ({ signOut }: HeaderProps) => {
           {signOut ? (
             <Button 
               variant="outline" 
-              colorScheme="whiteAlpha" 
               size="sm"
               onClick={signOut}
             >
               Sign Out
             </Button>
           ) : (
-            <Button variant="outline" colorScheme="whiteAlpha" size="sm">
+            <Button variant="outline" size="sm">
               Sign In
             </Button>
           )}

@@ -31,7 +31,7 @@ export default function Home() {
   return (
     <Container maxW="container.lg">
       <Heading as="h1" mb={6}> 
-        Welcome to Ladder Web 
+        Welcome
         {loading ? ' ...' : player ? ` ${player.givenName} ${player.familyName}` : ''}
       </Heading>
 

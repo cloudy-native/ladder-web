@@ -63,8 +63,24 @@ export function PlayersTab() {
     try {
       const currentPlayer = await getCurrentPlayer();
 
-      setPlayer(currentPlayer);
-      setTeamName(currentPlayer?.teams.name || "—");
+      if (currentPlayer) {
+        // Fetch the team relation data if player has a teamId
+        if (currentPlayer.teamId) {
+          try {
+            const teamResult = await currentPlayer.teams();
+            if (teamResult.data) {
+              setTeamName(teamResult.data.name || "—");
+            }
+          } catch (teamError) {
+            console.error("Error fetching player's team:", teamError);
+            setTeamName("—");
+          }
+        } else {
+          setTeamName("—");
+        }
+
+        setPlayer(currentPlayer);
+      }
     } catch (error) {
       console.error("Error fetching player:", error);
     }
@@ -74,41 +90,91 @@ export function PlayersTab() {
     setLoading(true);
 
     try {
-      // Use selectionSet parameter to include team relationships
       const { data: playerData, errors } = await client.models.Player.list();
 
       if (errors) {
         console.error("Error fetching players:", errors);
-        throw new Error("Failed to fetch players");
+        // Continue with any available data rather than throwing
       }
 
-      setAllPlayers(playerData);
-      console.log("Players fetched successfully:", allPlayers);
+      // Ensure we only use valid player objects to prevent UI errors
+      if (playerData && Array.isArray(playerData)) {
+        const validPlayers = playerData.filter(
+          (player) =>
+            player !== null &&
+            typeof player === "object" &&
+            player.id &&
+            player.givenName &&
+            player.familyName
+        );
+
+        // Sort players by name for better readability
+        validPlayers.sort((a, b) => {
+          return `${a.givenName} ${a.familyName}`.localeCompare(
+            `${b.givenName} ${b.familyName}`
+          );
+        });
+
+        setAllPlayers(validPlayers);
+        console.log(`Fetched ${validPlayers.length} players`);
+      } else {
+        setAllPlayers([]);
+      }
     } catch (error) {
       console.error("Error fetching players:", error);
+      setAllPlayers([]);
     } finally {
       setLoading(false);
     }
   }
 
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
+  const [createPlayerError, setCreatePlayerError] = useState<string | null>(
+    null
+  );
+
   async function createPlayer() {
-    if (!newPlayerGivenName || !newPlayerFamilyName || !newPlayerEmail) {
-      console.error("All fields are required");
+    // Reset error state
+    setCreatePlayerError(null);
+
+    // Validate input
+    if (!newPlayerGivenName.trim()) {
+      setCreatePlayerError("First name is required");
       return;
     }
+
+    if (!newPlayerFamilyName.trim()) {
+      setCreatePlayerError("Last name is required");
+      return;
+    }
+
+    if (!newPlayerEmail.trim()) {
+      setCreatePlayerError("Email is required");
+      return;
+    }
+
+    // Simple email validation
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(newPlayerEmail.trim())) {
+      setCreatePlayerError("Please enter a valid email address");
+      return;
+    }
+
+    setIsCreatingPlayer(true);
 
     try {
       const { data: createdPlayer, errors } = await client.models.Player.create(
         {
-          givenName: newPlayerGivenName,
-          familyName: newPlayerFamilyName,
-          email: newPlayerEmail,
+          givenName: newPlayerGivenName.trim(),
+          familyName: newPlayerFamilyName.trim(),
+          email: newPlayerEmail.trim(),
         }
       );
 
       if (errors) {
         console.error("Error creating player:", errors);
-        throw new Error("Failed to create player");
+        setCreatePlayerError("Failed to create player. Please try again.");
+        return;
       }
 
       console.log("Player created successfully:", createdPlayer);
@@ -118,13 +184,17 @@ export function PlayersTab() {
       setNewPlayerFamilyName("");
       setNewPlayerEmail("");
 
+      // Close the dialog
+      addPlayerDialog.setOpen(false);
+
       // Refresh player list
       getAllPlayers();
     } catch (error) {
       console.error("Error creating player:", error);
+      setCreatePlayerError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsCreatingPlayer(false);
     }
-
-    getAllPlayers();
   }
 
   // Get current players for pagination
@@ -136,37 +206,81 @@ export function PlayersTab() {
   );
   const totalPages = Math.ceil(allPlayers.length / playersPerPage);
 
+  // TeamCell component to display team information
+  function TeamCell({ player }: { player: Player }) {
+    const [teamName, setTeamName] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      async function fetchTeam() {
+        if (!player.teamId) {
+          setTeamName("—");
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const teamResult = await player.teams();
+          setTeamName(teamResult.data?.name || "Unknown Team");
+        } catch (err) {
+          console.error("Error fetching team:", err);
+          setTeamName("Error loading team");
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      fetchTeam();
+    }, [player]);
+
+    if (loading) return <Text fontSize="sm">Loading...</Text>;
+    return <Text>{teamName}</Text>;
+  }
+
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   return (
     <Stack>
       {/* Current Player Section */}
-      {player && (
-        <Card.Root p={4}>
+      {player ? (
+        <Card.Root p={4} mb={6}>
           <Card.Header>
             <Heading size="md">Your Profile</Heading>
           </Card.Header>
           <Card.Body>
-            <HStack>
-              <Icon as={IoPerson} boxSize={10} />
+            <HStack align="flex-start">
+              <Box bg="blue.100" p={3} borderRadius="lg">
+                <Icon as={IoPerson} boxSize={10} color="blue.500" />
+              </Box>
               <VStack align="start">
                 <Text fontWeight="bold" fontSize="lg">
-                  {player.givenName} {player.familyName} ({player.email})
+                  {player.givenName} {player.familyName}
                 </Text>
-                <Text color="gray.600">Player ID: {player.id}</Text>
-                {player.teamId && (
-                  <Text>
-                    Team:{" "}
-                    <Text as="span" fontWeight="bold">
-                      {player.teams.name || "—"}
-                    </Text>
+                <Text fontSize="md">{player.email}</Text>
+                <HStack>
+                  <Text fontWeight="medium" color="gray.700">
+                    Team:
                   </Text>
-                )}
+                  <Text
+                    fontWeight={player.teamId ? "medium" : "normal"}
+                    color={player.teamId ? "blue.500" : "gray.500"}
+                  >
+                    {teamName || "—"}
+                  </Text>
+                </HStack>
               </VStack>
             </HStack>
           </Card.Body>
         </Card.Root>
+      ) : (
+        <Alert.Root status="info" mb={6}>
+          <Alert.Indicator />
+          <Alert.Title>No profile found</Alert.Title>
+          <Alert.Description>
+            Create a new player profile below to get started.
+          </Alert.Description>
+        </Alert.Root>
       )}
 
       {/* All Players Section */}
@@ -192,6 +306,7 @@ export function PlayersTab() {
                       placeholder="Enter first name"
                       value={newPlayerGivenName}
                       onChange={(e) => setNewPlayerGivenName(e.target.value)}
+                      required
                     />
                   </Field>
                   <Field label="Last Name">
@@ -199,6 +314,7 @@ export function PlayersTab() {
                       placeholder="Enter last name"
                       value={newPlayerFamilyName}
                       onChange={(e) => setNewPlayerFamilyName(e.target.value)}
+                      required
                     />
                   </Field>
                   <Field label="Email">
@@ -207,8 +323,16 @@ export function PlayersTab() {
                       type="email"
                       value={newPlayerEmail}
                       onChange={(e) => setNewPlayerEmail(e.target.value)}
+                      required
                     />
                   </Field>
+
+                  {createPlayerError && (
+                    <Alert.Root status="error" mt={2}>
+                      <Alert.Indicator />
+                      <Alert.Title>{createPlayerError}</Alert.Title>
+                    </Alert.Root>
+                  )}
                 </Stack>
               </DialogBody>
               <DialogFooter>
@@ -216,10 +340,15 @@ export function PlayersTab() {
                   <Button variant="outline">Cancel</Button>
                 </DialogActionTrigger>
                 <Button
-                  onClick={() => {
-                    createPlayer();
-                    addPlayerDialog.setOpen(false);
-                  }}
+                  onClick={createPlayer}
+                  loading={isCreatingPlayer}
+                  loadingText="Creating..."
+                  disabled={
+                    isCreatingPlayer ||
+                    !newPlayerGivenName.trim() ||
+                    !newPlayerFamilyName.trim() ||
+                    !newPlayerEmail.trim()
+                  }
                 >
                   Create Player
                 </Button>
@@ -256,13 +385,9 @@ export function PlayersTab() {
                       <Table.Cell fontWeight="medium">
                         {player.givenName} {player.familyName}
                       </Table.Cell>
-                      <Table.Cell fontWeight="medium">
-                        {player.email}
-                      </Table.Cell>
+                      <Table.Cell>{player.email}</Table.Cell>
                       <Table.Cell>
-                        {player.teamId
-                          ? player.teams.name || "Unknown Team"
-                          : "—"}
+                        <TeamCell player={player} />
                       </Table.Cell>
                     </Table.Row>
                   ))}
@@ -271,39 +396,95 @@ export function PlayersTab() {
             </Card.Root>
 
             {/* Pagination */}
-            <HStack justifyContent="center" mt={4}>
-              <Button
-                size="sm"
-                onClick={() => paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
+            <Box mt={6}>
+              <HStack justifyContent="space-between" mb={3}>
+                <Text fontSize="sm" color="gray.600">
+                  Showing {indexOfFirstPlayer + 1}-
+                  {Math.min(indexOfLastPlayer, allPlayers.length)} of{" "}
+                  {allPlayers.length} players
+                </Text>
 
-              {[...Array(totalPages)].map((_, index) => (
-                <Button
-                  key={index}
-                  size="sm"
-                  variant={currentPage === index + 1 ? "solid" : "outline"}
-                  onClick={() => paginate(index + 1)}
-                >
-                  {index + 1}
-                </Button>
-              ))}
+                <HStack>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => paginate(1)}
+                    disabled={currentPage === 1}
+                    aria-label="First page"
+                  >
+                    First
+                  </Button>
 
-              <Button
-                size="sm"
-                onClick={() => paginate(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </Button>
-            </HStack>
-            <Text textAlign="center" fontSize="sm" color="gray.500" mt={2}>
-              Showing {indexOfFirstPlayer + 1}-
-              {Math.min(indexOfLastPlayer, allPlayers.length)} of{" "}
-              {allPlayers.length} players
-            </Text>
+                  <Button
+                    size="sm"
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <Text mr={1}>&laquo;</Text> Prev
+                  </Button>
+
+                  {/* Display a limited window of page numbers to avoid cluttering the UI */}
+                  {[...Array(totalPages)].map((_, index) => {
+                    // Only show pages around the current page
+                    if (
+                      index + 1 === 1 || // Always show first page
+                      index + 1 === totalPages || // Always show last page
+                      (index + 1 >= currentPage - 1 &&
+                        index + 1 <= currentPage + 1) // Show pages around current
+                    ) {
+                      return (
+                        <Button
+                          key={index}
+                          size="sm"
+                          variant={
+                            currentPage === index + 1 ? "solid" : "outline"
+                          }
+                          onClick={() => paginate(index + 1)}
+                          backgroundColor={
+                            currentPage === index + 1 ? "blue.500" : undefined
+                          }
+                          color={
+                            currentPage === index + 1 ? "white" : undefined
+                          }
+                          minW="2.5rem"
+                        >
+                          {index + 1}
+                        </Button>
+                      );
+                    }
+
+                    // Show ellipsis if there's a gap
+                    if (
+                      (index + 1 === currentPage - 2 && currentPage > 3) ||
+                      (index + 1 === currentPage + 2 &&
+                        currentPage < totalPages - 2)
+                    ) {
+                      return <Text key={`ellipsis-${index}`}>...</Text>;
+                    }
+
+                    return null;
+                  })}
+
+                  <Button
+                    size="sm"
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next <Text ml={1}>&raquo;</Text>
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => paginate(totalPages)}
+                    disabled={currentPage === totalPages}
+                    aria-label="Last page"
+                  >
+                    Last
+                  </Button>
+                </HStack>
+              </HStack>
+            </Box>
           </>
         )}
       </Box>
