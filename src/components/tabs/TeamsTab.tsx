@@ -1,21 +1,38 @@
 import {
   Alert,
+  Avatar,
+  Badge,
   Box,
   Button,
   Card,
   DialogRootProvider,
+  Flex,
   Heading,
   HStack,
   Icon,
   Input,
   Spinner,
+  Table,
   Text,
   useDialog,
   VStack,
 } from "@chakra-ui/react";
 import { generateClient } from "aws-amplify/data";
 import { useEffect, useState } from "react";
-import { IoAdd, IoPeople, IoRemove, IoRemoveCircle, IoTrash, IoTrophy, IoUnlink } from "react-icons/io5";
+import {
+  IoAdd,
+  IoAddCircle,
+  IoClose,
+  IoExit,
+  IoPeople,
+  IoPersonAdd,
+  IoRefresh,
+  IoRemove,
+  IoRemoveCircle,
+  IoSave,
+  IoTrash,
+  IoTrophy,
+} from "react-icons/io5";
 import type { Schema } from "../../../amplify/data/resource";
 import { getCurrentPlayer } from "../../data";
 import {
@@ -37,8 +54,13 @@ type Ladder = Schema["Ladder"]["type"];
 type Player = Schema["Player"]["type"];
 type Team = Schema["Team"]["type"];
 
+// Define extended team type with players list
+interface TeamWithPlayers extends Team {
+  playersList?: Player[];
+}
+
 export function TeamsTab() {
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [teams, setTeams] = useState<TeamWithPlayers[]>([]);
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState("");
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>();
@@ -54,30 +76,16 @@ export function TeamsTab() {
   const enrollTeamDialog = useDialog();
 
   // Selected items
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<TeamWithPlayers | null>(
+    null
+  );
   const [selectedLadder, setSelectedLadder] = useState<Ladder | null>(null);
 
   async function getTeams() {
     setLoading(true);
 
     try {
-      const { data: teamData, errors } = await client.models.Team.list({
-        selectionSet: ["id", "name", "rating", "players.*"]
-        
-        //  `
-        //   id
-        //   name
-        //   rating
-        //   players {
-        //     items {
-        //       id
-        //       givenName
-        //       familyName
-        //       email
-        //     }
-        //   }
-        // `
-      });
+      const { data: teamData, errors } = await client.models.Team.list();
 
       if (errors) {
         console.error("Error fetching teams:", errors);
@@ -86,15 +94,36 @@ export function TeamsTab() {
 
       // Ensure we only use valid team objects to prevent UI errors
       if (teamData && Array.isArray(teamData)) {
-        const validTeams = teamData.filter(team => 
-          team !== null && 
-          typeof team === 'object' &&
-          team.id &&
-          team.name
+        const validTeams = teamData.filter(
+          (team) =>
+            team !== null && typeof team === "object" && team.id && team.name
         );
-        
+
         console.log(`Fetched ${validTeams.length} teams`);
-        setTeams(validTeams);
+
+        // Create an array of promises to fetch players for each team in parallel
+        const teamsWithPlayersPromises = validTeams.map(async (team) => {
+          try {
+            // Fetch players for this team
+            const playersResult = await team.players();
+            const players = playersResult.data || [];
+
+            return {
+              ...team,
+              playersList: players,
+            } as TeamWithPlayers;
+          } catch (err) {
+            console.error(`Error fetching players for team ${team.id}:`, err);
+            return {
+              ...team,
+              playersList: [],
+            } as TeamWithPlayers;
+          }
+        });
+
+        // Wait for all player fetches to complete
+        const teamsWithPlayers = await Promise.all(teamsWithPlayersPromises);
+        setTeams(teamsWithPlayers);
       } else {
         setTeams([]);
       }
@@ -119,16 +148,17 @@ export function TeamsTab() {
 
       // Ensure we only use valid ladder objects to prevent UI errors
       if (ladderData && Array.isArray(ladderData)) {
-        const validLadders = ladderData.filter(ladder => 
-          ladder !== null && 
-          typeof ladder === 'object' &&
-          ladder.id &&
-          ladder.name
+        const validLadders = ladderData.filter(
+          (ladder) =>
+            ladder !== null &&
+            typeof ladder === "object" &&
+            ladder.id &&
+            ladder.name
         );
-        
+
         // Sort by name for better user experience
         validLadders.sort((a, b) => a.name.localeCompare(b.name));
-        
+
         setLadders(validLadders);
       } else {
         setLadders([]);
@@ -145,7 +175,8 @@ export function TeamsTab() {
     setLoadingEnrollments(true);
 
     try {
-      const { data: enrollmentData, errors } = await client.models.Enrollment.list();
+      const { data: enrollmentData, errors } =
+        await client.models.Enrollment.list();
 
       if (errors) {
         console.error("Error fetching enrollments:", errors);
@@ -154,14 +185,15 @@ export function TeamsTab() {
 
       // Ensure we only use valid enrollment objects to prevent UI errors
       if (enrollmentData && Array.isArray(enrollmentData)) {
-        const validEnrollments = enrollmentData.filter(enrollment => 
-          enrollment !== null && 
-          typeof enrollment === 'object' &&
-          enrollment.id &&
-          enrollment.teamId &&
-          enrollment.ladderId
+        const validEnrollments = enrollmentData.filter(
+          (enrollment) =>
+            enrollment !== null &&
+            typeof enrollment === "object" &&
+            enrollment.id &&
+            enrollment.teamId &&
+            enrollment.ladderId
         );
-        
+
         setEnrollments(validEnrollments);
         console.log(`Fetched ${validEnrollments.length} enrollments`);
       } else {
@@ -189,29 +221,29 @@ export function TeamsTab() {
   const [initialRating, setInitialRating] = useState<string>("1200");
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [createTeamError, setCreateTeamError] = useState<string | null>(null);
-  
+
   async function createTeam() {
     // Reset error state
     setCreateTeamError(null);
-    
+
     // Validate input
     if (!teamName.trim()) {
       setCreateTeamError("Team name is required");
       return;
     }
-    
+
     const parsedRating = parseInt(initialRating);
     if (isNaN(parsedRating) || parsedRating < 0) {
       setCreateTeamError("Rating must be a positive number");
       return;
     }
-    
+
     setIsCreatingTeam(true);
-    
+
     try {
       const { data: createdTeam, errors } = await client.models.Team.create({
         name: teamName.trim(),
-        rating: parsedRating !== 0 ? (parsedRating || 1200) : 0
+        rating: parsedRating !== 0 ? parsedRating || 1200 : 0,
       });
 
       if (errors) {
@@ -221,19 +253,19 @@ export function TeamsTab() {
       }
 
       console.log("Team created successfully:", createdTeam);
-      
+
       // Reset form fields
       setTeamName("");
       setInitialRating("1200");
-      
+
       // Close the dialog
       addTeamDialog.setOpen(false);
-      
+
       // Add the new team to the list or refresh the list
       if (createdTeam) {
         // Option 1: Add to existing list
         setTeams((prev) => [createdTeam, ...prev]);
-        
+
         // Option 2: Refresh the full list to ensure consistency
         // getTeams();
       }
@@ -245,79 +277,83 @@ export function TeamsTab() {
     }
   }
 
-  const [deletingTeams, setDeletingTeams] = useState<Record<string, boolean>>({});
+  const [deletingTeams, setDeletingTeams] = useState<Record<string, boolean>>(
+    {}
+  );
   const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
-  
+
   async function deleteTeam(id: string) {
     // Reset any previous error for this team
-    setDeleteErrors(prev => ({ ...prev, [id]: '' }));
-    
+    setDeleteErrors((prev) => ({ ...prev, [id]: "" }));
+
     // Set the deleting state for this specific team
-    setDeletingTeams(prev => ({ ...prev, [id]: true }));
-    
+    setDeletingTeams((prev) => ({ ...prev, [id]: true }));
+
     try {
       // First check if team has enrollments
-      const teamEnrollments = enrollments.filter(e => e.teamId === id);
+      const teamEnrollments = enrollments.filter((e) => e.teamId === id);
       if (teamEnrollments.length > 0) {
-        setDeleteErrors(prev => ({ 
-          ...prev, 
-          [id]: `Cannot delete: team is enrolled in ${teamEnrollments.length} ladder(s). Unenroll first.`
+        setDeleteErrors((prev) => ({
+          ...prev,
+          [id]: `Cannot delete: team is enrolled in ${teamEnrollments.length} ladder(s). Unenroll first.`,
         }));
         return;
       }
-      
+
       // Then check if team has players
-      const teamExists = teams.find(t => t.id === id);
+      const teamExists = teams.find((t) => t.id === id);
       if (teamExists) {
         // We'd need to fetch players for this team, but for now we'll proceed with deletion
-        
+
         const { errors } = await client.models.Team.delete({ id });
-        
+
         if (errors) {
           console.error("Error deleting team:", errors);
-          setDeleteErrors(prev => ({ 
-            ...prev, 
-            [id]: "Failed to delete team. It may have players or enrollments."
+          setDeleteErrors((prev) => ({
+            ...prev,
+            [id]: "Failed to delete team. It may have players or enrollments.",
           }));
           return;
         }
-        
+
         console.log("Team deleted successfully");
-        
+
         // Remove the deleted team from the list
         setTeams((prev) => prev.filter((team) => team.id !== id));
       }
     } catch (error) {
       console.error("Error deleting team:", error);
-      setDeleteErrors(prev => ({ 
-        ...prev, 
-        [id]: "An unexpected error occurred during deletion."
+      setDeleteErrors((prev) => ({
+        ...prev,
+        [id]: "An unexpected error occurred during deletion.",
       }));
     } finally {
       // Reset the deleting state
-      setDeletingTeams(prev => ({ ...prev, [id]: false }));
+      setDeletingTeams((prev) => ({ ...prev, [id]: false }));
     }
   }
 
   const [isJoiningTeam, setIsJoiningTeam] = useState(false);
   const [joinTeamError, setJoinTeamError] = useState<string | null>(null);
-  
+
   async function joinTeam(teamId: string) {
     // Reset error state
     setJoinTeamError(null);
-    
+
     if (!currentPlayer) {
       setJoinTeamError("You must be logged in to join a team");
       return;
     }
-    
+
     setIsJoiningTeam(true);
 
     try {
-      const { data: updatedPlayer, errors } = await client.models.Player.update({
-        id: currentPlayer.id,
-        teamId: teamId,
-      });
+      const { data: updatedPlayer, errors } = await client.models.Player.update(
+        {
+          id: currentPlayer.id,
+          teamId: teamId,
+        }
+      );
 
       if (errors) {
         console.error("Error joining team:", errors);
@@ -326,10 +362,10 @@ export function TeamsTab() {
       }
 
       console.log("Joined team successfully:", updatedPlayer);
-      
+
       // Update local state
       setCurrentPlayer(updatedPlayer);
-      
+
       // Close dialog
       joinTeamDialog.setOpen(false);
 
@@ -459,11 +495,17 @@ export function TeamsTab() {
     return currentPlayer?.teamId === teamId;
   }
 
-  useEffect(() => {
+  // Function to refresh all data
+  const refreshData = () => {
     getTeams();
     getPlayer();
     getLadders();
     getEnrollments();
+  };
+
+  // Load data once on component mount
+  useEffect(() => {
+    refreshData();
   }, []);
 
   return (
@@ -484,7 +526,7 @@ export function TeamsTab() {
                 </Text>
               </Text>
               <Button variant="outline" onClick={leaveTeam}>
-                Leave Team
+                <Icon as={IoExit} mr={2} /> Leave Team
               </Button>
             </HStack>
           ) : (
@@ -495,11 +537,16 @@ export function TeamsTab() {
         </Card.Body>
       </Card.Root>
 
-      {/* Create Team Button */}
+      {/* Action Buttons */}
       <HStack justifyContent="flex-end" mb={4}>
+        <Button variant="outline" onClick={refreshData}>
+          <Icon as={IoRefresh} mr={2} /> Refresh
+        </Button>
         <DialogRootProvider value={addTeamDialog}>
           <DialogTrigger asChild>
-            <Button variant="outline">Create Team</Button>
+            <Button variant="outline">
+              <Icon as={IoAddCircle} mr={2} /> Create Team
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -522,10 +569,11 @@ export function TeamsTab() {
                   onChange={(e) => setInitialRating(e.target.value)}
                 />
                 <Text fontSize="xs" color="gray.500" mt={1}>
-                  The default rating is 1200. Higher values indicate stronger teams.
+                  The default rating is 1200. Higher values indicate stronger
+                  teams.
                 </Text>
               </Field>
-              
+
               {createTeamError && (
                 <Alert.Root status="error" mt={2}>
                   <Alert.Indicator />
@@ -535,7 +583,9 @@ export function TeamsTab() {
             </DialogBody>
             <DialogFooter>
               <DialogActionTrigger asChild>
-                <Button variant="outline">Cancel</Button>
+                <Button variant="outline">
+                  <Icon as={IoClose} mr={2} /> Cancel
+                </Button>
               </DialogActionTrigger>
               <Button
                 onClick={createTeam}
@@ -543,7 +593,7 @@ export function TeamsTab() {
                 loadingText="Creating..."
                 disabled={isCreatingTeam || !teamName.trim()}
               >
-                Save
+                <Icon as={IoSave} mr={2} /> Save
               </Button>
             </DialogFooter>
             <DialogCloseTrigger />
@@ -585,13 +635,10 @@ export function TeamsTab() {
                       isTeamEnrolledInLadder(selectedTeam.id, ladder.id);
 
                     return (
-                      <Card.Root
-                        key={ladder.id}
-                        variant={isEnrolled ? "filled" : "outline"}
-                      >
+                      <Card.Root key={ladder.id}>
                         <Card.Body p={3}>
                           <HStack justifyContent="space-between">
-                            <VStack align="start" spacing={0}>
+                            <VStack align="start">
                               <Text fontWeight="bold">{ladder.name}</Text>
                               {ladder.description && (
                                 <Text fontSize="sm" color="gray.600">
@@ -678,7 +725,7 @@ export function TeamsTab() {
                 </Alert.Title>
               </Alert.Root>
             )}
-            
+
             {joinTeamError && (
               <Alert.Root status="error" mt={4}>
                 <Alert.Indicator />
@@ -688,7 +735,9 @@ export function TeamsTab() {
           </DialogBody>
           <DialogFooter>
             <DialogActionTrigger asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">
+                <Icon as={IoClose} mr={2} /> Cancel
+              </Button>
             </DialogActionTrigger>
             <Button
               onClick={() => {
@@ -700,7 +749,7 @@ export function TeamsTab() {
               loadingText="Joining..."
               disabled={isJoiningTeam || !selectedTeam}
             >
-              Join
+              <Icon as={IoPersonAdd} mr={2} /> Join
             </Button>
           </DialogFooter>
           <DialogCloseTrigger />
@@ -719,39 +768,68 @@ export function TeamsTab() {
           <Alert.Title>No teams found</Alert.Title>
         </Alert.Root>
       ) : (
-        <VStack spacing={4} align="stretch">
+        <VStack align="stretch">
           {teams.map((team) => {
             const isInTeam = isPlayerInTeam(team.id);
             const teamLadders = enrollments
               .filter((enrollment) => enrollment.teamId === team.id)
               .map((enrollment) => {
                 const ladderName = getLadderName(enrollment.ladderId);
-                return { id: enrollment.ladderId, name: ladderName };
+                return { id: enrollment.ladderId, name: ladderName } as Ladder;
               });
 
             return (
               <Card.Root key={team.id}>
                 <Card.Header p={4}>
-                  <HStack justifyContent="space-between" width="100%">
+                  <Flex
+                    direction="row"
+                    width="100%"
+                    justify="space-between"
+                    align="center"
+                  >
                     <HStack>
-                      <Icon as={IoPeople} boxSize={5} />
-                      <Text fontWeight="bold" fontSize="lg">
-                        {team.name}
-                      </Text>
-                      <HStack spacing={1}>
-                        <Text fontSize="sm" color="gray.600" fontWeight="medium">
-                          (Rating: {typeof team.rating === 'number' ? team.rating : 1200})
-                        </Text>
-                        {isInTeam && (
-                          <Text fontSize="sm" color="green.500" fontWeight="bold">
-                            • Your Team
+                      <Box
+                        p={2}
+                        borderRadius="lg"
+                        display="flex"
+                        alignItems="center"
+                      >
+                        <Icon as={IoPeople} boxSize={5} color="blue.600" />
+                      </Box>
+                      <Box>
+                        <HStack>
+                          <Text fontWeight="bold" fontSize="lg">
+                            {team.name}
                           </Text>
-                        )}
-                      </HStack>
+                          {isInTeam && (
+                            <Badge
+                              colorScheme="green"
+                              size="sm"
+                              variant="solid"
+                              px={2}
+                              borderRadius="full"
+                            >
+                              Your Team
+                            </Badge>
+                          )}
+                        </HStack>
+                        <HStack>
+                          <Text fontSize="sm" color="gray.600">
+                            Rating:{" "}
+                            <Text as="span" fontWeight="bold">
+                              {typeof team.rating === "number"
+                                ? team.rating
+                                : 1200}
+                            </Text>
+                          </Text>
+                        </HStack>
+                      </Box>
                     </HStack>
                     <HStack>
                       <Button
                         size="sm"
+                        colorScheme={isInTeam ? "green" : "blue"}
+                        variant={isInTeam ? "outline" : "solid"}
                         onClick={() => {
                           setSelectedTeam(team);
                           joinTeamDialog.setOpen(true);
@@ -763,18 +841,20 @@ export function TeamsTab() {
                       {isInTeam && (
                         <Button
                           size="sm"
+                          colorScheme="blue"
                           onClick={() => {
                             setSelectedTeam(team);
                             enrollTeamDialog.setOpen(true);
                           }}
                         >
                           <IoTrophy />
-                          Manage Ladders
+                          Ladders
                         </Button>
                       )}
                       <Button
                         size="sm"
                         variant="ghost"
+                        colorScheme="red"
                         onClick={() => deleteTeam(team.id)}
                         loading={deletingTeams[team.id]}
                         aria-label="Delete team"
@@ -782,69 +862,117 @@ export function TeamsTab() {
                         <Icon as={IoTrash} />
                       </Button>
                     </HStack>
-                  </HStack>
+                  </Flex>
                 </Card.Header>
-                <Card.Body p={4} pt={0}>
-                  <Text>Players: {team.players?.items?.length || 0}/2</Text>
-                  
-                  {/* Display player names with highlighting */}
-                  {team.players?.items && team.players.items.length > 0 && (
-                    <Box mt={2}>
-                      <Text fontWeight="medium" mb={1}>Team members:</Text>
-                      <VStack align="left" spacing={1}>
-                        {team.players.items.map((player) => (
-                          <Text 
-                            key={player.id}
-                            color="blue.500"  
-                            fontWeight="bold"
-                            fontSize="sm"
-                          >
-                            {player.givenName} {player.familyName}
-                            {player.id === currentPlayer?.id && (
-                              <Text as="span" color="green.500" ml={1}>(You)</Text>
-                            )}
-                          </Text>
-                        ))}
-                      </VStack>
-                    </Box>
-                  )}
-                  
+                <Box height="1px" bg="gray.200" />
+                <Card.Body p={4}>
+                  {/* Player Section */}
+                  <Box mb={teamLadders.length > 0 ? 4 : 0}>
+                    {!team.playersList || team.playersList.length === 0 ? (
+                      <Text color="gray.500" fontSize="sm">
+                        No players in this team yet
+                      </Text>
+                    ) : (
+                      <Table.Root size="sm">
+                        <Table.Header>
+                          <Table.Row>
+                            <Table.ColumnHeader>Player</Table.ColumnHeader>
+                            <Table.ColumnHeader>Email</Table.ColumnHeader>
+                          </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                          {team.playersList.map((player) => (
+                            <Table.Row key={player.id}>
+                              <Table.Cell>
+                                <HStack>
+                                  <Avatar.Root size="xs">
+                                    <Avatar.Fallback
+                                      name={`${player.givenName} ${player.familyName}`}
+                                    />
+                                  </Avatar.Root>
+                                  <Text fontWeight="medium">
+                                    {player.givenName} {player.familyName}
+                                    {player.id === currentPlayer?.id && (
+                                      <Badge
+                                        colorScheme="green"
+                                        ml={2}
+                                        size="sm"
+                                      >
+                                        You
+                                      </Badge>
+                                    )}
+                                  </Text>
+                                </HStack>
+                              </Table.Cell>
+                              <Table.Cell>
+                                <Text fontSize="sm">{player.email}</Text>
+                              </Table.Cell>
+                            </Table.Row>
+                          ))}
+                        </Table.Body>
+                      </Table.Root>
+                    )}
+                  </Box>
+
                   {/* Error message for team deletion */}
                   {deleteErrors[team.id] && (
-                    <Alert.Root status="error" mt={3} size="sm">
+                    <Alert.Root status="error" my={2} size="sm">
                       <Alert.Indicator />
                       <Alert.Title>{deleteErrors[team.id]}</Alert.Title>
                     </Alert.Root>
                   )}
 
-                  {/* Team Ladders */}
+                  {/* Team Ladders Section */}
                   {teamLadders.length > 0 && (
                     <Box mt={3}>
-                      <Text fontWeight="medium" mb={2}>
-                        Enrolled Ladders:
-                      </Text>
-                      <VStack align="stretch">
-                        {teamLadders.map((ladder) => (
-                          <HStack
-                            key={ladder.id}
-                            justifyContent="space-between"
-                          >
-                            <Text>{ladder.name}</Text>
+                      <Box height="1px" bg="gray.200" mb={3} />
+                      <Table.Root size="sm">
+                        <Table.Header>
+                          <Table.Row>
+                            <Table.ColumnHeader>Ladder</Table.ColumnHeader>
+                            <Table.ColumnHeader>Description</Table.ColumnHeader>
                             {isInTeam && (
-                              <Button
-                                size="xs"
-                                variant="outline"
-                                onClick={() =>
-                                  unenrollTeamFromLadder(team.id, ladder.id!)
-                                }
-                              >
-                                <Icon as={IoRemoveCircle} boxSize={3} mr={1} />
-                                Unenroll
-                              </Button>
+                              <Table.ColumnHeader textAlign="right">
+                                Actions
+                              </Table.ColumnHeader>
                             )}
-                          </HStack>
-                        ))}
-                      </VStack>
+                          </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                          {teamLadders.map((ladder) => (
+                            <Table.Row key={ladder.id}>
+                              <Table.Cell>
+                                <Text fontWeight="medium">{ladder.name}</Text>
+                              </Table.Cell>
+                              <Table.Cell>
+                                <Text fontWeight="medium">
+                                  {ladder.description}
+                                </Text>
+                              </Table.Cell>
+                              {isInTeam && (
+                                <Table.Cell textAlign="right">
+                                  <Button
+                                    size="xs"
+                                    colorScheme="red"
+                                    variant="outline"
+                                    onClick={() =>
+                                      ladder.id &&
+                                      unenrollTeamFromLadder(team.id, ladder.id)
+                                    }
+                                  >
+                                    <Icon
+                                      as={IoRemoveCircle}
+                                      mr={1}
+                                      boxSize={3}
+                                    />
+                                    Unenroll
+                                  </Button>
+                                </Table.Cell>
+                              )}
+                            </Table.Row>
+                          ))}
+                        </Table.Body>
+                      </Table.Root>
                     </Box>
                   )}
                 </Card.Body>

@@ -13,7 +13,9 @@ import { generateClient } from "aws-amplify/data";
 import { useEffect, useState } from "react";
 import { IoBeaker, IoRefresh, IoTrash } from "react-icons/io5";
 import type { Schema } from "../../../amplify/data/resource";
+import { deleteAllItems } from "../../utils/data-fetchers";
 import { nameFor, uniqueRandomNames } from "../../utils/random";
+import { RelationCell } from "../shared/RelationCell";
 
 const client = generateClient<Schema>();
 
@@ -21,72 +23,6 @@ type Enrollment = Schema["Enrollment"]["type"];
 type Ladder = Schema["Ladder"]["type"];
 type Player = Schema["Player"]["type"];
 type Team = Schema["Team"]["type"];
-
-function isPromise(value: any): boolean {
-  return value instanceof Promise;
-}
-
-/**
- * Generic component to handle fetching and displaying relation data
- */
-interface RelationCellProps<T> {
-  fetchRelation: () =>
-    | Promise<{ data?: T | null; errors?: any[] }>
-    | { data?: T | null; errors?: any[] };
-  renderData: (data: T | null | undefined) => React.ReactNode;
-  loadingElement?: React.ReactNode;
-  errorElement?: React.ReactNode;
-}
-
-function RelationCell<T>({
-  fetchRelation,
-  renderData,
-  loadingElement = "Loading...",
-  errorElement = "Error",
-}: RelationCellProps<T>) {
-  const [data, setData] = useState<T | null | undefined>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<boolean>(false);
-
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setError(false);
-
-      try {
-        const result = fetchRelation();
-
-        if (isPromise(result)) {
-          const response = await result;
-          if (response.errors) {
-            setError(true);
-          } else {
-            setData(response.data);
-          }
-        } else {
-          setData(undefined);
-        }
-      } catch (err) {
-        console.error("Error fetching relation:", err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [fetchRelation]);
-
-  if (loading) {
-    return <Table.Cell>{loadingElement}</Table.Cell>;
-  }
-
-  if (error) {
-    return <Table.Cell>{errorElement}</Table.Cell>;
-  }
-
-  return <Table.Cell>{renderData(data)}</Table.Cell>;
-}
 
 export function AdminTab() {
   const [isLoading, setIsLoading] = useState({
@@ -146,17 +82,17 @@ export function AdminTab() {
       function getRandomRating() {
         return Math.floor(Math.random() * 400) + 1000; // Random rating between 1000 and 1400
       }
-      
+
       const { data: team1 } = await client.models.Team.create({
-        name: "Team 1",
-        rating: getRandomRating()
+        name: "The Limeys",
+        rating: getRandomRating(),
       });
 
       sampleTeams.push(team1!);
 
       const { data: team2 } = await client.models.Team.create({
-        name: "Team 2",
-        rating: getRandomRating()
+        name: "The Yanks",
+        rating: getRandomRating(),
       });
 
       sampleTeams.push(team2!);
@@ -347,14 +283,20 @@ export function AdminTab() {
     }
   }
 
-  useEffect(() => {
+  // Function to refresh data
+  const refreshData = () => {
     getAll();
+  };
+
+  // Load data once on component mount
+  useEffect(() => {
+    refreshData();
   }, []);
 
   /**
-   * Generic function to delete all items of a specific type
+   * Wrapper for the utility deleteAllItems function that handles loading state
    */
-  async function deleteAllItems<T extends { id: string }>({
+  async function deleteAllItemsWithLoading<T extends { id: string }>({
     items,
     modelName,
     entityType,
@@ -369,27 +311,8 @@ export function AdminTab() {
     setIsLoading((prev) => ({ ...prev, [entityType]: true }));
 
     try {
-      // Handle type-safe model access
-      const model = client.models[modelName];
-
-      const deletePromises = items.map(async (item) => {
-        try {
-          // Use type assertion to handle dynamic method call
-          const response = await (model as any).delete({ id: item.id });
-
-          if (response.errors) {
-            throw new Error(`Failed to delete ${String(modelName)} ${item.id}`);
-          }
-
-          console.log(`Deleted ${String(modelName)}`, item.id);
-        } catch (err) {
-          console.error(`Error deleting ${String(modelName)} ${item.id}:`, err);
-          throw err;
-        }
-      });
-
-      await Promise.all(deletePromises);
-      console.log(`All ${String(modelName)}s successfully deleted`);
+      // Use the utility function
+      await deleteAllItems({ items, modelName });
     } catch (error) {
       console.error(`Error deleting ${String(modelName)}s:`, error);
     } finally {
@@ -400,9 +323,9 @@ export function AdminTab() {
     }
   }
 
-  // Simplified delete functions using the generic deleteAllItems function
+  // Simplified delete functions using the wrapped deleteAllItems function
   const deleteAllEnrollments = () =>
-    deleteAllItems({
+    deleteAllItemsWithLoading({
       items: enrollments,
       modelName: "Enrollment",
       entityType: "enrollments",
@@ -410,7 +333,7 @@ export function AdminTab() {
     });
 
   const deleteAllLadders = () =>
-    deleteAllItems({
+    deleteAllItemsWithLoading({
       items: ladders,
       modelName: "Ladder",
       entityType: "ladders",
@@ -418,7 +341,7 @@ export function AdminTab() {
     });
 
   const deleteAllPlayers = () =>
-    deleteAllItems({
+    deleteAllItemsWithLoading({
       items: players,
       modelName: "Player",
       entityType: "players",
@@ -426,7 +349,7 @@ export function AdminTab() {
     });
 
   const deleteAllTeams = () =>
-    deleteAllItems({
+    deleteAllItemsWithLoading({
       items: teams,
       modelName: "Team",
       entityType: "teams",
@@ -515,62 +438,31 @@ export function AdminTab() {
   }
 
   function EnrolledTeamsForLadderTableCell({ ladder }: { ladder: Ladder }) {
-    const [teamNames, setTeamNames] = useState<string[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-      async function fetchEnrolledTeams() {
-        setIsLoading(true);
-        setTeamNames([]);
-
-        try {
-          const enrollmentResult = ladder.enrollments();
-
-          if (!isPromise(enrollmentResult)) {
-            return;
-          }
-
-          const enrollmentData = await enrollmentResult;
-
-          if (!enrollmentData.data || enrollmentData.data.length === 0) {
-            return;
-          }
-
-          // Use Promise.all to fetch all teams in parallel
-          const teamPromises = enrollmentData.data.map(async (enrollment) => {
-            const teamResult = enrollment.team();
-            if (!isPromise(teamResult)) {
-              return null;
-            }
-
-            const teamData = await teamResult;
-            return teamData.data?.name;
-          });
-
-          const names = (await Promise.all(teamPromises)).filter(
-            (name): name is string => name !== null && name !== undefined
-          );
-
-          // Use Set to remove duplicates
-          setTeamNames([...new Set(names)]);
-        } catch (error) {
-          console.error("Error fetching teams for ladder:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-
-      fetchEnrolledTeams();
-    }, [ladder]);
-
-    if (isLoading) {
-      return <Table.Cell>Loading...</Table.Cell>;
-    }
-
     return (
-      <Table.Cell>
-        {teamNames.length > 0 ? teamNames.join(", ") : "—"}
-      </Table.Cell>
+      <RelationCell<Enrollment[]>
+        fetchRelation={() => ladder.enrollments()}
+        renderData={async (enrollments) => {
+          if (!enrollments || enrollments.length === 0) return "—";
+
+          try {
+            // Use Promise.all to fetch all teams in parallel
+            const teamPromises = enrollments.map(async (enrollment) => {
+              const teamResult = await enrollment.team();
+              return teamResult.data?.name;
+            });
+
+            const names = (await Promise.all(teamPromises)).filter(
+              (name): name is string => name !== null && name !== undefined
+            );
+
+            // Use Set to remove duplicates
+            return [...new Set(names)].join(", ") || "—";
+          } catch (error) {
+            console.error("Error fetching teams for ladder:", error);
+            return "Error loading teams";
+          }
+        }}
+      />
     );
   }
 
@@ -580,13 +472,13 @@ export function AdminTab() {
         <Flex align={"stretch"}>
           <Spacer />
           <ButtonGroup>
-            <Button onClick={deleteAll}>
+            <Button onClick={deleteAll} variant={"outline"}>
               <IoTrash /> Delete everything
             </Button>
-            <Button onClick={addSampleEntities}>
+            <Button onClick={addSampleEntities} variant={"outline"}>
               <IoBeaker /> Load sample data
             </Button>
-            <Button onClick={getAll}>
+            <Button onClick={refreshData} variant={"outline"}>
               <IoRefresh /> Refresh
             </Button>
           </ButtonGroup>
@@ -623,6 +515,7 @@ export function AdminTab() {
               loading={isLoading.ladders}
               onClick={deleteAllLadders}
               disabled={isLoading.ladders}
+              variant={"outline"}
             >
               <IoTrash />
               Delete All Ladders
@@ -661,6 +554,7 @@ export function AdminTab() {
               loading={isLoading.players}
               onClick={deleteAllPlayers}
               disabled={isLoading.players}
+              variant={"outline"}
             >
               <IoTrash />
               Delete All Players
@@ -697,6 +591,7 @@ export function AdminTab() {
               loading={isLoading.teams}
               onClick={deleteAllTeams}
               disabled={isLoading.teams}
+              variant={"outline"}
             >
               <IoTrash />
               Delete All Teams
@@ -733,6 +628,7 @@ export function AdminTab() {
               loading={isLoading.enrollments}
               onClick={deleteAllEnrollments}
               disabled={isLoading.enrollments}
+              variant={"outline"}
             >
               <IoTrash />
               Delete All Enrollments

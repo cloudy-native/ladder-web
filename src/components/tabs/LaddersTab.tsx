@@ -8,14 +8,14 @@ import {
   Icon,
   Input,
   Spinner,
+  Table,
   Text,
   useDialog,
   VStack,
-  Table,
 } from "@chakra-ui/react";
 import { generateClient } from "aws-amplify/data";
 import { useEffect, useState } from "react";
-import { IoTrash } from "react-icons/io5";
+import { IoAddCircle, IoRefresh, IoTrash } from "react-icons/io5";
 import type { Schema } from "../../../amplify/data/resource";
 import {
   DialogActionTrigger,
@@ -168,8 +168,14 @@ export function LaddersTab() {
     }
   }
 
-  useEffect(() => {
+  // Function to refresh data
+  const refreshData = () => {
     getLadders();
+  };
+
+  // Load data once on component mount
+  useEffect(() => {
+    refreshData();
   }, []);
 
   // Import type from resource schema
@@ -308,12 +314,17 @@ export function LaddersTab() {
   }
 
   return (
-    <>
-      {/* Create Ladder Dialog */}
+    <Box>
+      {/* Action Buttons */}
       <HStack justifyContent="flex-end" mb={4}>
+        <Button variant="outline" onClick={refreshData}>
+          <Icon as={IoRefresh} mr={2} /> Refresh
+        </Button>
         <DialogRootProvider value={addLadderDialog}>
           <DialogTrigger asChild>
-            <Button variant="outline">Create Ladder</Button>
+            <Button variant="outline">
+              <Icon as={IoAddCircle} mr={2} /> Create Ladder
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -451,6 +462,6 @@ export function LaddersTab() {
           ))}
         </VStack>
       )}
-    </>
+    </Box>
   );
 }

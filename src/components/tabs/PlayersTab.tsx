@@ -17,7 +17,7 @@ import {
 } from "@chakra-ui/react";
 import { generateClient } from "aws-amplify/data";
 import { useEffect, useState } from "react";
-import { IoPerson, IoPersonAdd } from "react-icons/io5";
+import { IoPerson, IoPersonAdd, IoRefresh } from "react-icons/io5";
 import type { Schema } from "../../../amplify/data/resource";
 import { getCurrentPlayer } from "../../data";
 import {
@@ -54,9 +54,15 @@ export function PlayersTab() {
   const [newPlayerFamilyName, setNewPlayerFamilyName] = useState("");
   const [newPlayerEmail, setNewPlayerEmail] = useState("");
 
-  useEffect(() => {
+  // Function to refresh data
+  const refreshData = () => {
     fetchPlayer();
     getAllPlayers();
+  };
+
+  // Load data once on component mount
+  useEffect(() => {
+    refreshData();
   }, []);
 
   async function fetchPlayer() {
@@ -285,14 +291,17 @@ export function PlayersTab() {
 
       {/* All Players Section */}
       <Box>
-        <HStack justifyContent="space-between" mb={4}>
-          <Heading size="md">All Players</Heading>
+        {/* <HStack justifyContent="space-between" mb={4}> */}
+        <Heading size="md">All Players</Heading>
 
+        <HStack justifyContent="flex-end" mb={4}>
+          <Button variant="outline" onClick={refreshData}>
+            <Icon as={IoRefresh} mr={2} /> Refresh
+          </Button>
           <DialogRootProvider value={addPlayerDialog}>
             <DialogTrigger asChild>
               <Button variant="outline">
-                <IoPersonAdd />
-                Add Player
+                <Icon as={IoPersonAdd} mr={2} /> Add Player
               </Button>
             </DialogTrigger>
             <DialogContent>
