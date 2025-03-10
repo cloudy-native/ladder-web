@@ -6,22 +6,21 @@ import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
   +------------+          +-----------+
   | name       |          | name      |
   | description|          | ladderId  | (1:1)
-  +------------+          +-----------+
-        |                      |
-        |                      |
+  +------------+          | player1Id | (1:1)
+        |                 | player2Id | (1:1)
+        |                 +-----------+
         |                      |
         +-1------many----------+
-                               |
-                               |
-                               |
-                        +------+------+
-                        |   Player    |
-                        +-------------+
-                        | givenName   |
-                        | familyName  |
-                        | email       |
-                        | teamId      |
-                        +-------------+
+                              / \
+                             /   \
+                            /     \
+               +-----------+       +-----------+
+               |  Player1  |       |  Player2  |
+               +-----------+       +-----------+
+               | givenName |       | givenName |
+               | familyName|       | familyName|
+               | email     |       | email     |
+               +-----------+       +-----------+
  */
 
 const schema = a.schema({
@@ -30,18 +29,21 @@ const schema = a.schema({
     .model({
       name: a.string().required(),
       description: a.string(),
-      teams: a.hasMany("Team", "ladderId"), // Changed to hasMany
+      teams: a.hasMany("Team", "ladderId"), 
       matches: a.hasMany("Match", "ladderId"),
     })
     .authorization((allow) => [allow.guest(), allow.authenticated()]),
 
-  /* A team can only be on one ladder. And can have any number of players. */
+  /* A team can only be on one ladder and has exactly 2 player slots. */
   Team: a
     .model({
       name: a.string().required(),
-      ladderId: a.id(), // Changed to singular ID
-      ladder: a.belongsTo("Ladder", "ladderId"), // Changed to belongsTo
-      players: a.hasMany("Player", "teamId"),
+      ladderId: a.id(), 
+      ladder: a.belongsTo("Ladder", "ladderId"),
+      player1Id: a.id(), 
+      player1: a.belongsTo("Player", "player1Id"),
+      player2Id: a.id(), 
+      player2: a.belongsTo("Player", "player2Id"),
       rating: a.integer().default(1200).required(),
       team1: a.hasMany("Match", "team1Id"),
       team2: a.hasMany("Match", "team2Id"),
@@ -49,14 +51,14 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.guest(), allow.authenticated()]),
 
-  /* A player may belong to more than one team (but we can enforce exactly 0 or 1 in code)*/
+  /* A player can only be in one team (as player1 or player2) */
   Player: a
     .model({
       givenName: a.string().required(),
       familyName: a.string().required(),
       email: a.email().required(),
-      teamId: a.id(),
-      teams: a.belongsTo("Team", "teamId"),
+      teamAsPlayer1: a.hasOne("Team", "player1Id"),
+      teamAsPlayer2: a.hasOne("Team", "player2Id"),
     })
     .authorization((allow) => [allow.guest(), allow.authenticated()]),
 

@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   DialogRootProvider,
+  Flex,
   Heading,
   HStack,
   Icon,
@@ -17,7 +18,7 @@ import {
 } from "@chakra-ui/react";
 import { generateClient } from "aws-amplify/data";
 import { useEffect, useState } from "react";
-import { IoPerson, IoPersonAdd, IoRefresh } from "react-icons/io5";
+import { IoClose, IoPerson, IoPersonAdd, IoRefresh } from "react-icons/io5";
 import type { Schema } from "../../../amplify/data/resource";
 import { getCurrentPlayer } from "../../data";
 import {
@@ -43,6 +44,7 @@ export function PlayersTab() {
   const [teamName, setTeamName] = useState("");
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterText, setFilterText] = useState("");
   const addPlayerDialog = useDialog();
 
   // Pagination states
@@ -54,10 +56,28 @@ export function PlayersTab() {
   const [newPlayerFamilyName, setNewPlayerFamilyName] = useState("");
   const [newPlayerEmail, setNewPlayerEmail] = useState("");
 
+  // Function to filter players based on search text
+  const filterPlayers = (players: Player[]) => {
+    if (!filterText.trim()) return players;
+    
+    return players.filter(player => {
+      // Check player name
+      const fullName = `${player.givenName} ${player.familyName}`.toLowerCase();
+      if (fullName.includes(filterText.toLowerCase())) return true;
+      
+      // Check player email
+      if (player.email.toLowerCase().includes(filterText.toLowerCase())) return true;
+      
+      return false;
+    });
+  };
+
   // Function to refresh data
   const refreshData = () => {
     fetchPlayer();
     getAllPlayers();
+    // Clear filter
+    setFilterText("");
   };
 
   // Load data once on component mount
@@ -65,23 +85,39 @@ export function PlayersTab() {
     refreshData();
   }, []);
 
+  // Reset to first page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterText]);
+
   async function fetchPlayer() {
     try {
       const currentPlayer = await getCurrentPlayer();
 
       if (currentPlayer) {
-        // Fetch the team relation data if player has a teamId
-        if (currentPlayer.teamId) {
-          try {
-            const teamResult = await currentPlayer.teams();
-            if (teamResult.data) {
-              setTeamName(teamResult.data.name || "—");
-            }
-          } catch (teamError) {
-            console.error("Error fetching player's team:", teamError);
+        try {
+          // Get teams where this player is player1
+          const player1TeamsResult = await client.models.Team.list({
+            filter: { player1Id: { eq: currentPlayer.id } },
+            selectionSet: ["id", "name"]
+          });
+          
+          // Get teams where this player is player2
+          const player2TeamsResult = await client.models.Team.list({
+            filter: { player2Id: { eq: currentPlayer.id } },
+            selectionSet: ["id", "name"]
+          });
+          
+          // Set team name from either player1 or player2 result
+          const team = player1TeamsResult.data?.[0] || player2TeamsResult.data?.[0];
+          
+          if (team) {
+            setTeamName(team.name || "—");
+          } else {
             setTeamName("—");
           }
-        } else {
+        } catch (teamError) {
+          console.error("Error fetching player's team:", teamError);
           setTeamName("—");
         }
 
@@ -203,14 +239,15 @@ export function PlayersTab() {
     }
   }
 
-  // Get current players for pagination
+  // Get current players for pagination with filtering
+  const filteredPlayers = filterPlayers(allPlayers);
   const indexOfLastPlayer = currentPage * playersPerPage;
   const indexOfFirstPlayer = indexOfLastPlayer - playersPerPage;
-  const currentPlayers = allPlayers.slice(
+  const currentPlayers = filteredPlayers.slice(
     indexOfFirstPlayer,
     indexOfLastPlayer
   );
-  const totalPages = Math.ceil(allPlayers.length / playersPerPage);
+  const totalPages = Math.ceil(filteredPlayers.length / playersPerPage);
 
   // TeamCell component to display team information
   function TeamCell({ player }: { player: Player }) {
@@ -219,15 +256,27 @@ export function PlayersTab() {
 
     useEffect(() => {
       async function fetchTeam() {
-        if (!player.teamId) {
-          setTeamName("—");
-          setLoading(false);
-          return;
-        }
-
         try {
-          const teamResult = await player.teams();
-          setTeamName(teamResult.data?.name || "Unknown Team");
+          // Get teams where this player is player1
+          const player1TeamsResult = await client.models.Team.list({
+            filter: { player1Id: { eq: player.id } },
+            selectionSet: ["id", "name"]
+          });
+          
+          // Get teams where this player is player2
+          const player2TeamsResult = await client.models.Team.list({
+            filter: { player2Id: { eq: player.id } },
+            selectionSet: ["id", "name"]
+          });
+          
+          // Get team name from either player1 or player2 result
+          const team = player1TeamsResult.data?.[0] || player2TeamsResult.data?.[0];
+          
+          if (team) {
+            setTeamName(team.name || "Unknown Team");
+          } else {
+            setTeamName("—");
+          }
         } catch (err) {
           console.error("Error fetching team:", err);
           setTeamName("Error loading team");
@@ -269,8 +318,8 @@ export function PlayersTab() {
                     Team:
                   </Text>
                   <Text
-                    fontWeight={player.teamId ? "medium" : "normal"}
-                    color={player.teamId ? "blue.500" : "gray.500"}
+                    fontWeight={teamName !== "—" ? "medium" : "normal"}
+                    color={teamName !== "—" ? "blue.500" : "gray.500"}
                   >
                     {teamName || "—"}
                   </Text>
@@ -292,15 +341,15 @@ export function PlayersTab() {
       {/* All Players Section */}
       <Box>
         {/* <HStack justifyContent="space-between" mb={4}> */}
-        <Heading size="md">All Players</Heading>
+        <Heading size="md" mb={4}>All Players</Heading>
 
         <HStack justifyContent="flex-end" mb={4}>
-          <Button  onClick={refreshData}>
+          <Button onClick={refreshData}>
             <Icon as={IoRefresh} mr={2} /> Refresh
           </Button>
           <DialogRootProvider value={addPlayerDialog}>
             <DialogTrigger asChild>
-              <Button >
+              <Button>
                 <Icon as={IoPersonAdd} mr={2} /> Add Player
               </Button>
             </DialogTrigger>
@@ -366,6 +415,29 @@ export function PlayersTab() {
             </DialogContent>
           </DialogRootProvider>
         </HStack>
+        
+        {/* Search input */}
+        <Box mb={4}>
+          <Flex gap={4} alignItems="center">
+            <Input
+              placeholder="Search by name or email..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              flex="1"
+              bg="white"
+            />
+            {filterText && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setFilterText("")}
+                aria-label="Clear search"
+              >
+                <Icon as={IoClose} />
+              </Button>
+            )}
+          </Flex>
+        </Box>
 
         {loading ? (
           <Box textAlign="center" py={8}>
@@ -376,6 +448,12 @@ export function PlayersTab() {
           <Alert.Root status="info">
             <Alert.Indicator />
             <Alert.Title>No players found</Alert.Title>
+          </Alert.Root>
+        ) : filteredPlayers.length === 0 ? (
+          <Alert.Root status="info">
+            <Alert.Indicator />
+            <Alert.Title>No players match your search</Alert.Title>
+            <Alert.Description>Try a different search term or clear your filter.</Alert.Description>
           </Alert.Root>
         ) : (
           <>
@@ -409,8 +487,8 @@ export function PlayersTab() {
               <HStack justifyContent="space-between" mb={3}>
                 <Text fontSize="sm" color="gray.600">
                   Showing {indexOfFirstPlayer + 1}-
-                  {Math.min(indexOfLastPlayer, allPlayers.length)} of{" "}
-                  {allPlayers.length} players
+                  {Math.min(indexOfLastPlayer, filteredPlayers.length)} of{" "}
+                  {filteredPlayers.length} players
                 </Text>
 
                 <HStack>

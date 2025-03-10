@@ -86,9 +86,49 @@ export function formatPlayerName(player: Player): string {
 /**
  * Check if a player is a member of the team
  */
-export function isPlayerInTeam(playerId: string | undefined, teamId: string | undefined | null): boolean {
-  if (!playerId || !teamId) return false;
-  return true;
+export function isPlayerInTeam(playerId: string | undefined, team: Team | null | undefined): boolean {
+  if (!playerId || !team) return false;
+  return team.player1Id === playerId || team.player2Id === playerId;
+}
+
+/**
+ * Get available slots in a team
+ */
+export function getAvailableTeamSlots(team: Team | null | undefined): ('player1' | 'player2')[] {
+  if (!team) return [];
+  
+  const availableSlots: ('player1' | 'player2')[] = [];
+  
+  if (!team.player1Id) {
+    availableSlots.push('player1');
+  }
+  
+  if (!team.player2Id) {
+    availableSlots.push('player2');
+  }
+  
+  return availableSlots;
+}
+
+/**
+ * Format the list of players in a team
+ */
+export function formatTeamPlayers(player1?: Player | null, player2?: Player | null): string {
+  const players: string[] = [];
+  
+  if (player1) {
+    players.push(`${player1.givenName} ${player1.familyName}`);
+  }
+  
+  if (player2) {
+    players.push(`${player2.givenName} ${player2.familyName}`);
+  }
+  
+  if (players.length === 0) {
+    return "No players";
+  }
+  
+  return players.join(", ");
 }
 
 /**

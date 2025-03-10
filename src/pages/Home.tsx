@@ -5,14 +5,21 @@ import {
   IoPeople,
   IoPerson,
   IoSettingsSharp,
+  IoTrophy
 } from "react-icons/io5";
 import { Schema } from "../../amplify/data/resource";
-import { AdminTab, LaddersTab, PlayersTab, TeamsTab } from "../components/tabs";
+import { 
+  AdminTab, 
+  LaddersTab, 
+  MatchesTab, 
+  PlayersTab, 
+  TeamsTab 
+} from "../components/tabs";
 import { getCurrentPlayer } from "../data";
 import { nameFor } from "../utils/random";
 
 type Player = Schema["Player"]["type"];
-type TabValue = "ladders" | "players" | "teams" | "admin";
+type TabValue = "ladders" | "players" | "teams" | "matches" | "admin";
 
 export default function Home() {
   // TODO: rename currentPlayer
@@ -65,6 +72,10 @@ export default function Home() {
             <Icon as={IoPeople} mr={2} />
             Teams
           </Tabs.Trigger>
+          <Tabs.Trigger value="matches">
+            <Icon as={IoTrophy} mr={2} />
+            Matches
+          </Tabs.Trigger>
           <Tabs.Trigger value="admin" ml="auto">
             <Icon as={IoSettingsSharp} mr={2} />
             Admin
@@ -81,6 +92,10 @@ export default function Home() {
 
         <Tabs.Content value="teams">
           <TeamsTab />
+        </Tabs.Content>
+
+        <Tabs.Content value="matches">
+          <MatchesTab />
         </Tabs.Content>
 
         <Tabs.Content value="admin">

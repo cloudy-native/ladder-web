@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   DialogRootProvider,
+  Flex,
   HStack,
   Icon,
   Input,
@@ -13,9 +14,8 @@ import {
   useDialog,
   VStack,
 } from "@chakra-ui/react";
-import { generateClient } from "aws-amplify/data";
-import { useEffect, useState } from "react";
-import { IoAddCircle, IoRefresh, IoTrash } from "react-icons/io5";
+import { useCallback, useState } from "react";
+import { IoAddCircle, IoClose, IoRefresh, IoTrash } from "react-icons/io5";
 import type { Schema } from "../../../amplify/data/resource";
 import {
   DialogActionTrigger,
@@ -28,284 +28,137 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Field } from "../ui/field";
-
-const client = generateClient<Schema>();
+import { 
+  useLadderList, 
+  useLadderCreate, 
+  useLadderDelete, 
+  useTeamsForLadder, 
+  TeamWithPlayers, 
+  useFilter 
+} from "../../utils/hooks";
 
 type Ladder = Schema["Ladder"]["type"];
+type Player = Schema["Player"]["type"];
+
+// Component to display teams in a ladder as a table sorted by rating
+function TeamsDisplay({ ladder }: { ladder: Ladder }) {
+  const { teamsWithPlayers, loading, error } = useTeamsForLadder(ladder.id);
+
+  if (loading) return <Text fontSize="sm">Loading teams...</Text>;
+  if (error)
+    return (
+      <Text fontSize="sm" color="red.500">
+        Error loading teams
+      </Text>
+    );
+  if (teamsWithPlayers.length === 0)
+    return <Text fontSize="sm">No teams in this ladder</Text>;
+
+  // Format player names
+  function formatPlayers(players?: Player[]) {
+    if (!players || players.length === 0) return "—";
+
+    return players
+      .map((player) => `${player.givenName} ${player.familyName}`)
+      .join(", ");
+  }
+
+  return (
+    <Box>
+      <Text fontSize="sm" fontWeight="medium" mb={3}>
+        {teamsWithPlayers.length} team{teamsWithPlayers.length !== 1 ? "s" : ""}{" "}
+        in ladder:
+      </Text>
+
+      <Table.Root size="sm">
+        <Table.Header>
+          <Table.Row>
+            <Table.ColumnHeader width="40px">#</Table.ColumnHeader>
+            <Table.ColumnHeader>Team</Table.ColumnHeader>
+            <Table.ColumnHeader>Players</Table.ColumnHeader>
+            <Table.ColumnHeader>Rating</Table.ColumnHeader>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {teamsWithPlayers.map((team, index) => (
+            <Table.Row key={team.id}>
+              <Table.Cell fontWeight="medium">{index + 1}</Table.Cell>
+              <Table.Cell fontWeight="medium">{team.name}</Table.Cell>
+              <Table.Cell>{formatPlayers(team.playersList)}</Table.Cell>
+              <Table.Cell fontWeight="medium">{team.rating}</Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table.Root>
+    </Box>
+  );
+}
 
 export function LaddersTab() {
-  const [ladders, setLadders] = useState<Ladder[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Custom hooks for ladder data and operations
+  const { ladders, loading, refreshLadders } = useLadderList();
+  const { createLadder, isCreating, createError } = useLadderCreate();
+  const { deleteLadder, deletingLadders, deleteError } = useLadderDelete();
+  
+  // Filter hook
+  const ladderFilter = useCallback((ladder: Ladder, searchText: string) => {
+    // Check ladder name
+    if (ladder.name.toLowerCase().includes(searchText)) return true;
+    
+    // Check ladder description if it exists
+    if (ladder.description && ladder.description.toLowerCase().includes(searchText)) {
+      return true;
+    }
+    
+    return false;
+  }, []);
+  
+  const { filterText, setFilterText, filteredItems: filteredLadders, clearFilter } = useFilter(ladders, ladderFilter);
+  
+  // Form state
   const [ladderName, setLadderName] = useState("");
   const [ladderDescription, setLadderDescription] = useState("");
+  
+  // Dialog state
   const addLadderDialog = useDialog();
-
-  async function getLadders() {
-    setLoading(true);
-
-    try {
-      const { data: ladderData, errors } = await client.models.Ladder.list();
-
-      if (errors) {
-        console.error("Error fetching ladders:", errors);
-        // Continue with any available data rather than throwing
-      }
-
-      // Ensure we only use valid ladder objects to prevent UI errors
-      if (ladderData && Array.isArray(ladderData)) {
-        const validLadders = ladderData.filter(
-          (ladder) =>
-            ladder !== null &&
-            typeof ladder === "object" &&
-            ladder.id &&
-            ladder.name
-        );
-        setLadders(validLadders);
-        console.log("Ladders fetched:", validLadders.length);
-      } else {
-        setLadders([]);
-      }
-    } catch (error) {
-      console.error("Exception fetching ladders:", error);
-      setLadders([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-
-  async function createLadder() {
-    // Reset error state
-    setCreateError(null);
-
-    // Validate input
-    if (!ladderName.trim()) {
-      setCreateError("Ladder name is required");
-      return;
-    }
-
-    setIsCreating(true);
-
-    try {
-      const { data: createdLadder, errors } = await client.models.Ladder.create(
-        {
-          name: ladderName.trim(),
-          description: ladderDescription.trim() || undefined, // Only send if not empty
-        }
-      );
-
-      if (errors) {
-        console.error("Error creating ladder:", errors);
-        setCreateError("Failed to create ladder. Please try again.");
-        return;
-      }
-
-      console.log("Ladder created successfully:", createdLadder);
-
-      // Clear form after successful creation
-      setLadderName("");
-      setLadderDescription("");
-
-      // Refresh ladder list
-      getLadders();
-
-      // Success - close dialog
-      addLadderDialog.setOpen(false);
-    } catch (error) {
-      console.error("Exception creating ladder:", error);
-      setCreateError("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
-  const [deletingLadders, setDeletingLadders] = useState<
-    Record<string, boolean>
-  >({});
-  const [deleteError, setDeleteError] = useState<Record<string, string>>({});
   const deleteDialogRef = useDialog();
   const [ladderToDelete, setLadderToDelete] = useState<Ladder | null>(null);
 
-  function confirmDeleteLadder(ladder: Ladder) {
+  // Functions for UI operations
+  const handleCreateLadder = async () => {
+    const created = await createLadder(ladderName, ladderDescription);
+    if (created) {
+      // Clear form after successful creation
+      setLadderName("");
+      setLadderDescription("");
+      
+      // Refresh ladder list
+      refreshLadders();
+      
+      // Close dialog
+      addLadderDialog.setOpen(false);
+    }
+  };
+  
+  const confirmDeleteLadder = (ladder: Ladder) => {
     setLadderToDelete(ladder);
     deleteDialogRef.setOpen(true);
-  }
-
-  async function deleteLadder(id: string) {
-    // Reset any previous error for this ladder
-    setDeleteError((prev) => ({ ...prev, [id]: "" }));
-
-    // Set the deleting state for this specific ladder
-    setDeletingLadders((prev) => ({ ...prev, [id]: true }));
-
-    try {
-      const { errors } = await client.models.Ladder.delete({ id });
-
-      if (errors) {
-        console.error("Error deleting ladder:", errors);
-        setDeleteError((prev) => ({
-          ...prev,
-          [id]: "Failed to delete ladder. It may have teams or matches associated with it.",
-        }));
-        return;
-      }
-
-      console.log("Ladder deleted successfully");
-
-      // Refresh the ladder list
-      getLadders();
-    } catch (error) {
-      console.error("Exception deleting ladder:", error);
-      setDeleteError((prev) => ({
-        ...prev,
-        [id]: "An unexpected error occurred during deletion.",
-      }));
-    } finally {
-      // Reset the deleting state
-      setDeletingLadders((prev) => ({ ...prev, [id]: false }));
-    }
-  }
-
-  // Function to refresh data
-  const refreshData = () => {
-    getLadders();
   };
-
-  // Load data once on component mount
-  useEffect(() => {
-    refreshData();
-  }, []);
-
-  // Import type from resource schema
-  type Team = Schema["Team"]["type"];
-  type Player = Schema["Player"]["type"];
-
-  interface TeamWithPlayers extends Team {
-    playersList?: Player[];
-  }
-
-  // Component to display teams in a ladder as a table sorted by rating
-  function TeamsDisplay({ ladder }: { ladder: Ladder }) {
-    const [teamsWithPlayers, setTeamsWithPlayers] = useState<TeamWithPlayers[]>(
-      []
-    );
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-
-    useEffect(() => {
-      async function fetchTeams() {
-        setLoading(true);
-        setError(false);
-
-        try {
-          // Fetch teams directly from the ladder
-          const teamsResult = await ladder.teams();
-
-          if (teamsResult.errors) {
-            console.error(
-              "Error fetching teams for ladder:",
-              teamsResult.errors
-            );
-            setError(true);
-            return;
-          }
-
-          const teams = teamsResult.data || [];
-          
-          // If we have teams, fetch the players for each one
-          if (teams.length > 0) {
-            const teamsData: TeamWithPlayers[] = [];
-
-            // Create an array of promises to fetch players for teams in parallel
-            const teamPromises = teams.map(async (team) => {
-              try {
-                if (team && team.id) {
-                  // Fetch players for this team
-                  const playersResult = await team.players();
-                  const players = playersResult.data || [];
-
-                  teamsData.push({
-                    ...team,
-                    playersList: players,
-                  });
-                }
-              } catch (err) {
-                console.error("Error fetching players for team:", err);
-              }
-            });
-
-            // Wait for all team fetches to complete
-            await Promise.all(teamPromises);
-
-            // Sort teams by rating in descending order
-            teamsData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-
-            setTeamsWithPlayers(teamsData);
-          } else {
-            setTeamsWithPlayers([]);
-          }
-        } catch (err) {
-          console.error("Exception fetching teams for ladder:", err);
-          setError(true);
-        } finally {
-          setLoading(false);
-        }
+  
+  const handleDeleteLadder = async () => {
+    if (ladderToDelete) {
+      const success = await deleteLadder(ladderToDelete.id);
+      if (success) {
+        refreshLadders();
       }
-
-      fetchTeams();
-    }, [ladder]);
-
-    if (loading) return <Text fontSize="sm">Loading teams...</Text>;
-    if (error)
-      return (
-        <Text fontSize="sm" color="red.500">
-          Error loading teams
-        </Text>
-      );
-    if (teamsWithPlayers.length === 0)
-      return <Text fontSize="sm">No teams in this ladder</Text>;
-
-    // Format player names
-    function formatPlayers(players?: Player[]) {
-      if (!players || players.length === 0) return "—";
-
-      return players
-        .map((player) => `${player.givenName} ${player.familyName}`)
-        .join(", ");
+      deleteDialogRef.setOpen(false);
     }
-
-    return (
-      <Box>
-        <Text fontSize="sm" fontWeight="medium" mb={3}>
-          {teamsWithPlayers.length} team{teamsWithPlayers.length !== 1 ? "s" : ""}{" "}
-          in ladder:
-        </Text>
-
-        <Table.Root size="sm">
-          <Table.Header>
-            <Table.Row>
-              <Table.ColumnHeader width="40px">#</Table.ColumnHeader>
-              <Table.ColumnHeader>Team</Table.ColumnHeader>
-              <Table.ColumnHeader>Players</Table.ColumnHeader>
-              <Table.ColumnHeader>Rating</Table.ColumnHeader>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {teamsWithPlayers.map((team, index) => (
-              <Table.Row key={team.id}>
-                <Table.Cell fontWeight="medium">{index + 1}</Table.Cell>
-                <Table.Cell fontWeight="medium">{team.name}</Table.Cell>
-                <Table.Cell>{formatPlayers(team.playersList)}</Table.Cell>
-                <Table.Cell fontWeight="medium">{team.rating}</Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table.Root>
-      </Box>
-    );
-  }
+  };
+  
+  const refreshData = () => {
+    refreshLadders();
+    clearFilter();
+  };
 
   return (
     <Box>
@@ -351,7 +204,7 @@ export function LaddersTab() {
                 <Button>Cancel</Button>
               </DialogActionTrigger>
               <Button
-                onClick={createLadder}
+                onClick={handleCreateLadder}
                 loading={isCreating}
                 loadingText="Creating..."
                 disabled={isCreating || !ladderName.trim()}
@@ -363,6 +216,29 @@ export function LaddersTab() {
           </DialogContent>
         </DialogRootProvider>
       </HStack>
+      
+      {/* Search input */}
+      <Box mb={4}>
+        <Flex gap={4} alignItems="center">
+          <Input
+            placeholder="Search by ladder name or description..."
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            flex="1"
+            bg="white"
+          />
+          {filterText && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={clearFilter}
+              aria-label="Clear search"
+            >
+              <Icon as={IoClose} />
+            </Button>
+          )}
+        </Flex>
+      </Box>
 
       {/* Delete Confirmation Dialog */}
       <DialogRootProvider value={deleteDialogRef}>
@@ -384,12 +260,7 @@ export function LaddersTab() {
             </DialogActionTrigger>
             <Button
               colorScheme="red"
-              onClick={() => {
-                if (ladderToDelete) {
-                  deleteLadder(ladderToDelete.id);
-                  deleteDialogRef.setOpen(false);
-                }
-              }}
+              onClick={handleDeleteLadder}
             >
               Delete
             </Button>
@@ -409,9 +280,15 @@ export function LaddersTab() {
           <Alert.Title>No ladders found</Alert.Title>
           <Alert.Description>Create a ladder to get started.</Alert.Description>
         </Alert.Root>
+      ) : filteredLadders.length === 0 ? (
+        <Alert.Root status="info">
+          <Alert.Indicator />
+          <Alert.Title>No ladders match your search</Alert.Title>
+          <Alert.Description>Try a different search term or clear your filter.</Alert.Description>
+        </Alert.Root>
       ) : (
         <VStack align="stretch">
-          {ladders.map((ladder) => (
+          {filteredLadders.map((ladder) => (
             <Card.Root key={ladder.id}>
               <Card.Header>
                 <HStack justifyContent="space-between" width="100%">

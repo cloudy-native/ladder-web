@@ -10,19 +10,51 @@ type Player = Schema["Player"]["type"];
 // TODO: handle errors
 //
 export async function getCurrentPlayer() {
-  const { sub: userId } = await fetchUserAttributes();
+  try {
+    const { sub: userId } = await fetchUserAttributes();
 
-  if (!userId) {
-    console.error("Cannot get user sub attribute");
+    if (!userId) {
+      console.error("Cannot get user sub attribute");
+      return null;
+    }
 
+    const { data: currentPlayer, errors } = await client.models.Player.get({
+      id: userId
+    });
+    
+    if (errors) {
+      console.error("Error fetching current player:", errors);
+      return null;
+    }
+    
+    // If player doesn't exist, return null
+    if (!currentPlayer) {
+      return null;
+    }
+    
+    // Fetch the related team data
+    // Get teams where this player is player1
+    const player1TeamsResult = await client.models.Team.list({
+      filter: { player1Id: { eq: userId } },
+      selectionSet: ["id", "name", "rating", "ladderId"]
+    });
+    
+    // Get teams where this player is player2
+    const player2TeamsResult = await client.models.Team.list({
+      filter: { player2Id: { eq: userId } },
+      selectionSet: ["id", "name", "rating", "ladderId"]
+    });
+    
+    // Create an enhanced player object with team relationships
+    return {
+      ...currentPlayer,
+      teamAsPlayer1: player1TeamsResult.data || [],
+      teamAsPlayer2: player2TeamsResult.data || []
+    };
+  } catch (error) {
+    console.error("Error in getCurrentPlayer:", error);
     return null;
   }
-
-  const { data: currentPlayer, errors } = await client.models.Player.get({
-    id: userId,
-  });
-
-  return currentPlayer;
 }
 
 export async function createCurrentPlayerIfMissing() {
