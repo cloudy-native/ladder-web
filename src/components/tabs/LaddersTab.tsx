@@ -317,12 +317,12 @@ export function LaddersTab() {
     <Box>
       {/* Action Buttons */}
       <HStack justifyContent="flex-end" mb={4}>
-        <Button variant="outline" onClick={refreshData}>
+        <Button onClick={refreshData}>
           <Icon as={IoRefresh} mr={2} /> Refresh
         </Button>
         <DialogRootProvider value={addLadderDialog}>
           <DialogTrigger asChild>
-            <Button variant="outline">
+            <Button>
               <Icon as={IoAddCircle} mr={2} /> Create Ladder
             </Button>
           </DialogTrigger>
@@ -354,7 +354,7 @@ export function LaddersTab() {
             </DialogBody>
             <DialogFooter>
               <DialogActionTrigger asChild>
-                <Button variant="outline">Cancel</Button>
+                <Button>Cancel</Button>
               </DialogActionTrigger>
               <Button
                 onClick={createLadder}
@@ -386,7 +386,7 @@ export function LaddersTab() {
           </DialogBody>
           <DialogFooter>
             <DialogActionTrigger asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button>Cancel</Button>
             </DialogActionTrigger>
             <Button
               colorScheme="red"

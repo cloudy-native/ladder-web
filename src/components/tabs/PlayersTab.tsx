@@ -295,12 +295,12 @@ export function PlayersTab() {
         <Heading size="md">All Players</Heading>
 
         <HStack justifyContent="flex-end" mb={4}>
-          <Button variant="outline" onClick={refreshData}>
+          <Button  onClick={refreshData}>
             <Icon as={IoRefresh} mr={2} /> Refresh
           </Button>
           <DialogRootProvider value={addPlayerDialog}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button >
                 <Icon as={IoPersonAdd} mr={2} /> Add Player
               </Button>
             </DialogTrigger>
@@ -346,7 +346,7 @@ export function PlayersTab() {
               </DialogBody>
               <DialogFooter>
                 <DialogActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button >Cancel</Button>
                 </DialogActionTrigger>
                 <Button
                   onClick={createPlayer}
@@ -379,7 +379,7 @@ export function PlayersTab() {
           </Alert.Root>
         ) : (
           <>
-            <Card.Root variant="outline" mb={4}>
+            <Card.Root  mb={4}>
               <Table.Root>
                 <Table.Header>
                   <Table.Row>

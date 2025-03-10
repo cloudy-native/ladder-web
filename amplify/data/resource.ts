@@ -31,6 +31,7 @@ const schema = a.schema({
       name: a.string().required(),
       description: a.string(),
       enrollments: a.hasMany("Enrollment", "ladderId"),
+      matches: a.hasMany("Match", "ladderId"),
     })
     .authorization((allow) => [allow.guest(), allow.authenticated()]),
 
@@ -41,6 +42,9 @@ const schema = a.schema({
       enrollments: a.hasMany("Enrollment", "teamId"),
       players: a.hasMany("Player", "teamId"),
       rating: a.integer().default(1200).required(),
+      team1: a.hasMany("Match", "team1Id"),
+      team2: a.hasMany("Match", "team2Id"),
+      winner: a.hasMany("Match", "winnerId"),
     })
     .authorization((allow) => [allow.guest(), allow.authenticated()]),
 
@@ -63,6 +67,20 @@ const schema = a.schema({
       ladder: a.belongsTo("Ladder", "ladderId"),
       teamId: a.id().required(),
       team: a.belongsTo("Team", "teamId"),
+    })
+    .authorization((allow) => [allow.guest(), allow.authenticated()]),
+
+  /* A Match belongs to a ladder, and has 2 teams */
+  Match: a
+    .model({
+      ladderId: a.id().required(),
+      ladder: a.belongsTo("Ladder", "ladderId"),
+      team1Id: a.id().required(),
+      team1: a.belongsTo("Team", "team1Id"),
+      team2Id: a.id().required(),
+      team2: a.belongsTo("Team", "team2Id"),
+      winnerId: a.id(),
+      winner: a.belongsTo("Team", "winnerId"),
     })
     .authorization((allow) => [allow.guest(), allow.authenticated()]),
 });

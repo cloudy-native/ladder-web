@@ -3,14 +3,17 @@ import { Schema } from "../../amplify/data/resource";
 
 const client = generateClient<Schema>();
 
+type Enrollment = Schema["Enrollment"]["type"];
+type Ladder = Schema["Ladder"]["type"];
 type Player = Schema["Player"]["type"];
+type Team = Schema["Team"]["type"];
 
-interface Name {
+interface NameObject {
   givenName: string;
   familyName: string;
 }
 
-export function randomName(): Name {
+export function randomName(): NameObject {
   const givenNames: string[] = [
     "Alice",
     "Benjamin",
@@ -54,8 +57,8 @@ export function nameFor(player:Player) {
 
 // Assume < max possible
 //
-export function uniqueRandomNames(count: number): Name[] {
-  const result: Name[] = [];
+export function uniqueRandomNames(count: number): NameObject[] {
+  const result: NameObject[] = [];
   const usedCombinations = new Set<string>();
 
   while (result.length < count) {
@@ -64,7 +67,7 @@ export function uniqueRandomNames(count: number): Name[] {
     
     if (!usedCombinations.has(combinationKey)) {
       usedCombinations.add(combinationKey);
-      console.log("Adding name:", name);
+      
       result.push(name);
     }
   }

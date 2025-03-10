@@ -510,41 +510,14 @@ export function TeamsTab() {
 
   return (
     <Box>
-      {/* Current Team Section */}
-      <Card.Root mb={4} p={4}>
-        <Card.Header>
-          <Heading size="md">Your Team</Heading>
-        </Card.Header>
-        <Card.Body>
-          {currentPlayer?.teamId ? (
-            <HStack justifyContent="space-between">
-              <Text>
-                You are currently a member of team:{" "}
-                <Text as="span" fontWeight="bold">
-                  {teams.find((team) => team.id === currentPlayer.teamId)
-                    ?.name || currentPlayer.teamId}
-                </Text>
-              </Text>
-              <Button variant="outline" onClick={leaveTeam}>
-                <Icon as={IoExit} mr={2} /> Leave Team
-              </Button>
-            </HStack>
-          ) : (
-            <Text>
-              You are not currently a member of any team. Join a team below.
-            </Text>
-          )}
-        </Card.Body>
-      </Card.Root>
-
       {/* Action Buttons */}
       <HStack justifyContent="flex-end" mb={4}>
-        <Button variant="outline" onClick={refreshData}>
+        <Button onClick={refreshData}>
           <Icon as={IoRefresh} mr={2} /> Refresh
         </Button>
         <DialogRootProvider value={addTeamDialog}>
           <DialogTrigger asChild>
-            <Button variant="outline">
+            <Button>
               <Icon as={IoAddCircle} mr={2} /> Create Team
             </Button>
           </DialogTrigger>
@@ -583,7 +556,7 @@ export function TeamsTab() {
             </DialogBody>
             <DialogFooter>
               <DialogActionTrigger asChild>
-                <Button variant="outline">
+                <Button>
                   <Icon as={IoClose} mr={2} /> Cancel
                 </Button>
               </DialogActionTrigger>
@@ -650,8 +623,6 @@ export function TeamsTab() {
                               <Button
                                 size="sm"
                                 colorScheme="red"
-                                variant="outline"
-                                leftIcon={<Icon as={IoRemove} />}
                                 onClick={() => {
                                   if (selectedTeam) {
                                     unenrollTeamFromLadder(
@@ -661,13 +632,13 @@ export function TeamsTab() {
                                   }
                                 }}
                               >
+                                <IoRemove />
                                 Unenroll
                               </Button>
                             ) : (
                               <Button
                                 size="sm"
                                 colorScheme="blue"
-                                leftIcon={<Icon as={IoAdd} />}
                                 onClick={() => {
                                   if (selectedTeam) {
                                     enrollTeamInLadder(
@@ -677,6 +648,7 @@ export function TeamsTab() {
                                   }
                                 }}
                               >
+                                <IoAdd />
                                 Enroll
                               </Button>
                             )}
@@ -691,7 +663,7 @@ export function TeamsTab() {
           </DialogBody>
           <DialogFooter>
             <DialogActionTrigger asChild>
-              <Button variant="outline">Close</Button>
+              <Button>Close</Button>
             </DialogActionTrigger>
           </DialogFooter>
           <DialogCloseTrigger />
@@ -735,7 +707,7 @@ export function TeamsTab() {
           </DialogBody>
           <DialogFooter>
             <DialogActionTrigger asChild>
-              <Button variant="outline">
+              <Button>
                 <Icon as={IoClose} mr={2} /> Cancel
               </Button>
             </DialogActionTrigger>
@@ -954,7 +926,6 @@ export function TeamsTab() {
                                   <Button
                                     size="xs"
                                     colorScheme="red"
-                                    variant="outline"
                                     onClick={() =>
                                       ladder.id &&
                                       unenrollTeamFromLadder(team.id, ladder.id)

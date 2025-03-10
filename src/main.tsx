@@ -1,11 +1,11 @@
+import { ChakraProvider } from "@chakra-ui/react";
 import { Amplify } from "aws-amplify";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import config from "../amplify_outputs.json";
-import { Provider } from "./components/ui/provider";
-
 import App from "./App";
+import {theme} from "./theme/theme";
 import authListeners from "./utils/auth-listeners";
 
 // TODO: local dev only
@@ -19,9 +19,9 @@ authListeners();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
-      <Provider>
+      <ChakraProvider value={theme}>
         <App />
-      </Provider>
+      </ChakraProvider>
     </BrowserRouter>
   </StrictMode>
 );

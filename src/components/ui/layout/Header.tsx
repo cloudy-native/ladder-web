@@ -29,17 +29,16 @@ export const Header = ({ signOut }: HeaderProps) => {
         </HStack>
         <Spacer />
         <HStack>
-          <ColorModeButton />
+          {/* <ColorModeButton /> */}
           {signOut ? (
             <Button 
-              variant="outline" 
               size="sm"
               onClick={signOut}
             >
               Sign Out
             </Button>
           ) : (
-            <Button variant="outline" size="sm">
+            <Button size="sm">
               Sign In
             </Button>
           )}

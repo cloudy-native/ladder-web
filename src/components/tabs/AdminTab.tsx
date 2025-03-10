@@ -14,7 +14,8 @@ import { useEffect, useState } from "react";
 import { IoBeaker, IoRefresh, IoTrash } from "react-icons/io5";
 import type { Schema } from "../../../amplify/data/resource";
 import { deleteAllItems } from "../../utils/data-fetchers";
-import { nameFor, uniqueRandomNames } from "../../utils/random";
+import { addSampleEntities } from "../../utils/data-generators";
+import { nameFor } from "../../utils/random";
 import { RelationCell } from "../shared/RelationCell";
 
 const client = generateClient<Schema>();
@@ -36,112 +37,6 @@ export function AdminTab() {
   const [ladders, setLadders] = useState<Ladder[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-
-  /**
-   * Combinations of players, ladders, teams, enrollments.
-   *
-   * Ignores all errors and nulls
-   */
-  async function addSampleEntities() {
-    console.log("Making sample data");
-
-    const samplePlayers: Player[] = [];
-    const sampleLadders: Ladder[] = [];
-    const sampleTeams: Team[] = [];
-    const sampleEnrollments: Enrollment[] = [];
-
-    {
-      const created = uniqueRandomNames(5).map(async (name) => {
-        const { data } = await client.models.Player.create({
-          email: `${name.givenName}@example.com`,
-          ...name,
-          // Rating removed
-        });
-
-        samplePlayers.push(data!);
-      });
-
-      await Promise.all(created);
-    }
-
-    {
-      const created = ["Premier", "Kid's"].map(async (name) => {
-        const { data } = await client.models.Ladder.create({
-          name: `${name} ladder`,
-          description: `Description for ${name} ladder`,
-        });
-
-        sampleLadders.push(data!);
-      });
-
-      await Promise.all(created);
-    }
-
-    {
-      // Function to generate a random rating
-      function getRandomRating() {
-        return Math.floor(Math.random() * 400) + 1000; // Random rating between 1000 and 1400
-      }
-
-      const { data: team1 } = await client.models.Team.create({
-        name: "The Limeys",
-        rating: getRandomRating(),
-      });
-
-      sampleTeams.push(team1!);
-
-      const { data: team2 } = await client.models.Team.create({
-        name: "The Yanks",
-        rating: getRandomRating(),
-      });
-
-      sampleTeams.push(team2!);
-
-      const { data: player1 } = await client.models.Player.update({
-        id: samplePlayers[0].id,
-        teamId: team1?.id,
-      });
-
-      const { data: player2 } = await client.models.Player.update({
-        id: samplePlayers[1].id,
-        teamId: team1?.id,
-      });
-
-      const { data: player3 } = await client.models.Player.update({
-        id: samplePlayers[2].id,
-        teamId: team2?.id,
-      });
-
-      const { data: player4 } = await client.models.Player.update({
-        id: samplePlayers[3].id,
-        teamId: team2?.id,
-      });
-
-      await Promise.all([player1, player2, player3, player4]);
-    }
-
-    {
-      const { data: enrollment1 } = await client.models.Enrollment.create({
-        ladderId: sampleLadders[0].id,
-        teamId: sampleTeams[0].id,
-      });
-
-      sampleEnrollments.push(enrollment1!);
-
-      const { data: enrollment2 } = await client.models.Enrollment.create({
-        ladderId: sampleLadders[0].id,
-        teamId: sampleTeams[1].id,
-      });
-
-      sampleEnrollments.push(enrollment2!);
-
-      await Promise.all([enrollment1, enrollment2]);
-    }
-
-    await getAll();
-
-    console.log("Sample entities added successfully");
-  }
 
   async function getEnrollments() {
     try {
@@ -466,19 +361,25 @@ export function AdminTab() {
     );
   }
 
+  async function sampleData() {
+    await addSampleEntities();
+
+    refreshData();
+  }
+
   return (
     <Box>
       <VStack align="stretch">
         <Flex align={"stretch"}>
           <Spacer />
           <ButtonGroup>
-            <Button onClick={deleteAll} variant={"outline"}>
+            <Button onClick={deleteAll}>
               <IoTrash /> Delete everything
             </Button>
-            <Button onClick={addSampleEntities} variant={"outline"}>
+            <Button onClick={sampleData}>
               <IoBeaker /> Load sample data
             </Button>
-            <Button onClick={refreshData} variant={"outline"}>
+            <Button onClick={refreshData}>
               <IoRefresh /> Refresh
             </Button>
           </ButtonGroup>
@@ -515,7 +416,6 @@ export function AdminTab() {
               loading={isLoading.ladders}
               onClick={deleteAllLadders}
               disabled={isLoading.ladders}
-              variant={"outline"}
             >
               <IoTrash />
               Delete All Ladders
@@ -554,7 +454,6 @@ export function AdminTab() {
               loading={isLoading.players}
               onClick={deleteAllPlayers}
               disabled={isLoading.players}
-              variant={"outline"}
             >
               <IoTrash />
               Delete All Players
@@ -591,7 +490,6 @@ export function AdminTab() {
               loading={isLoading.teams}
               onClick={deleteAllTeams}
               disabled={isLoading.teams}
-              variant={"outline"}
             >
               <IoTrash />
               Delete All Teams
@@ -628,7 +526,6 @@ export function AdminTab() {
               loading={isLoading.enrollments}
               onClick={deleteAllEnrollments}
               disabled={isLoading.enrollments}
-              variant={"outline"}
             >
               <IoTrash />
               Delete All Enrollments
