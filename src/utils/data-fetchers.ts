@@ -3,10 +3,10 @@ import type { Schema } from "../../amplify/data/resource";
 
 const client = generateClient<Schema>();
 
-type Enrollment = Schema["Enrollment"]["type"];
 type Ladder = Schema["Ladder"]["type"];
 type Player = Schema["Player"]["type"];
 type Team = Schema["Team"]["type"];
+type Match = Schema["Match"]["type"];
 
 /**
  * Fetches all teams from the database
@@ -14,7 +14,7 @@ type Team = Schema["Team"]["type"];
 export async function getTeams() {
   try {
     const { data: teamData, errors } = await client.models.Team.list({
-      selectionSet: ["id", "name", "rating", "players.*"]
+      selectionSet: ["id", "name", "rating", "ladderId", "players.*"]
     });
 
     if (errors) {
@@ -42,11 +42,47 @@ export async function getTeams() {
 }
 
 /**
+ * Fetches teams for a specific ladder
+ */
+export async function getTeamsForLadder(ladderId: string) {
+  try {
+    const { data: teamData, errors } = await client.models.Team.list({
+      filter: { ladderId: { eq: ladderId } },
+      selectionSet: ["id", "name", "rating", "ladderId", "players.*"]
+    });
+
+    if (errors) {
+      console.error(`Error fetching teams for ladder ${ladderId}:`, errors);
+    }
+
+    // Ensure we only use valid team objects to prevent UI errors
+    if (teamData && Array.isArray(teamData)) {
+      const validTeams = teamData.filter(team => 
+        team !== null && 
+        typeof team === 'object' &&
+        team.id &&
+        team.name
+      );
+      
+      console.log(`Fetched ${validTeams.length} teams for ladder ${ladderId}`);
+      return validTeams;
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.error(`Error fetching teams for ladder ${ladderId}:`, error);
+    return [];
+  }
+}
+
+/**
  * Fetches all ladders from the database
  */
 export async function getLadders() {
   try {
-    const { data: ladderData, errors } = await client.models.Ladder.list();
+    const { data: ladderData, errors } = await client.models.Ladder.list({
+      selectionSet: ["id", "name", "description", "teams.*"]
+    });
 
     if (errors) {
       console.error("Error fetching ladders:", errors);
@@ -75,34 +111,64 @@ export async function getLadders() {
 }
 
 /**
- * Fetches all enrollments from the database
+ * Fetch ladder by ID with teams
  */
-export async function getEnrollments() {
+export async function getLadderWithTeams(ladderId: string) {
   try {
-    const { data: enrollmentData, errors } = await client.models.Enrollment.list();
+    const { data: ladder, errors } = await client.models.Ladder.get({
+      id: ladderId,
+      selectionSet: ["id", "name", "description"]
+    });
 
     if (errors) {
-      console.error("Error fetching enrollments:", errors);
+      console.error(`Error fetching ladder ${ladderId}:`, errors);
+      return null;
     }
 
-    // Ensure we only use valid enrollment objects to prevent UI errors
-    if (enrollmentData && Array.isArray(enrollmentData)) {
-      const validEnrollments = enrollmentData.filter(enrollment => 
-        enrollment !== null && 
-        typeof enrollment === 'object' &&
-        enrollment.id &&
-        enrollment.teamId &&
-        enrollment.ladderId
-      );
+    if (ladder) {
+      // Get teams for this ladder
+      const teams = await getTeamsForLadder(ladderId);
       
-      console.log(`Fetched ${validEnrollments.length} enrollments`);
-      return validEnrollments;
-    } else {
-      return [];
+      return {
+        ...ladder,
+        teamsList: teams
+      };
     }
+    
+    return null;
   } catch (error) {
-    console.error("Error fetching enrollments:", error);
-    return [];
+    console.error(`Error fetching ladder ${ladderId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get a team's ladder
+ */
+export async function getTeamLadder(teamId: string) {
+  try {
+    const { data: team, errors } = await client.models.Team.get({
+      id: teamId,
+      selectionSet: ["id", "name", "ladderId"]
+    });
+
+    if (errors) {
+      console.error(`Error fetching team ${teamId}:`, errors);
+      return null;
+    }
+
+    if (team && team.ladderId) {
+      const { data: ladder } = await client.models.Ladder.get({
+        id: team.ladderId
+      });
+      
+      return ladder;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error fetching ladder for team ${teamId}:`, error);
+    return null;
   }
 }
 
@@ -149,11 +215,12 @@ export async function getAllPlayers() {
 /**
  * Create a new team
  */
-export async function createTeam(name: string, rating: number = 1200) {
+export async function createTeam(name: string, rating: number = 1200, ladderId?: string) {
   try {
     const { data: createdTeam, errors } = await client.models.Team.create({
       name: name.trim(),
-      rating: rating
+      rating: rating,
+      ladderId: ladderId
     });
 
     if (errors) {
@@ -165,6 +232,29 @@ export async function createTeam(name: string, rating: number = 1200) {
     return createdTeam;
   } catch (error) {
     console.error("Error creating team:", error);
+    throw error;
+  }
+}
+
+/**
+ * Update a team's ladder
+ */
+export async function updateTeamLadder(teamId: string, ladderId: string | null) {
+  try {
+    const { data: updatedTeam, errors } = await client.models.Team.update({
+      id: teamId,
+      ladderId: ladderId
+    });
+
+    if (errors) {
+      console.error("Error updating team's ladder:", errors);
+      throw new Error("Failed to update team's ladder");
+    }
+
+    console.log("Team ladder updated successfully:", updatedTeam);
+    return updatedTeam;
+  } catch (error) {
+    console.error("Error updating team's ladder:", error);
     throw error;
   }
 }
@@ -280,46 +370,103 @@ export async function updatePlayerTeam(playerId: string, teamId: string | null) 
 }
 
 /**
- * Enroll a team in a ladder
+ * Check if a team can join a ladder
+ * This could include business logic like making sure the team has enough players
  */
-export async function enrollTeamInLadder(teamId: string, ladderId: string) {
+export async function canTeamJoinLadder(teamId: string, ladderId: string) {
   try {
-    const { data: createdEnrollment, errors } = await client.models.Enrollment.create({
-      teamId: teamId,
-      ladderId: ladderId,
+    // Get the team to check requirements
+    const { data: team, errors } = await client.models.Team.get({
+      id: teamId,
+      selectionSet: ["id", "ladderId", "players.*"]
     });
 
     if (errors) {
-      console.error("Error enrolling team in ladder:", errors);
-      throw new Error("Failed to enroll team in ladder");
+      console.error(`Error getting team ${teamId}:`, errors);
+      return false;
     }
 
-    console.log("Team enrolled successfully:", createdEnrollment);
-    return createdEnrollment;
+    // Check if the team is already on a ladder
+    if (team?.ladderId) {
+      // If it's already on this ladder, it can technically "join" again (no change)
+      if (team.ladderId === ladderId) {
+        return true;
+      }
+      // Teams can only be on one ladder at a time
+      return false;
+    }
+
+    // Add any other business logic checks here
+    // For example, checking if the team has the minimum number of players
+    // const minPlayers = 2;
+    // if (!team.players || team.players.length < minPlayers) {
+    //   return false;
+    // }
+
+    return true;
   } catch (error) {
-    console.error("Error enrolling team:", error);
-    throw error;
+    console.error(`Error checking if team ${teamId} can join ladder ${ladderId}:`, error);
+    return false;
   }
 }
 
 /**
- * Unenroll a team from a ladder
+ * Fetch matches for a ladder
  */
-export async function unenrollTeamFromLadder(enrollmentId: string) {
+export async function getMatchesForLadder(ladderId: string) {
   try {
-    const { errors } = await client.models.Enrollment.delete({
-      id: enrollmentId,
+    const { data: matchData, errors } = await client.models.Match.list({
+      filter: { ladderId: { eq: ladderId } },
+      selectionSet: ["id", "ladderId", "team1Id", "team2Id", "winnerId"]
     });
 
     if (errors) {
-      console.error("Error unenrolling team from ladder:", errors);
-      throw new Error("Failed to unenroll team from ladder");
+      console.error(`Error fetching matches for ladder ${ladderId}:`, errors);
+      return [];
     }
 
-    console.log("Team unenrolled successfully");
-    return true;
+    // Ensure we only use valid match objects to prevent UI errors
+    if (matchData && Array.isArray(matchData)) {
+      const validMatches = matchData.filter(match => 
+        match !== null && 
+        typeof match === 'object' &&
+        match.id &&
+        match.team1Id &&
+        match.team2Id
+      );
+      
+      console.log(`Fetched ${validMatches.length} matches for ladder ${ladderId}`);
+      return validMatches;
+    } else {
+      return [];
+    }
   } catch (error) {
-    console.error("Error unenrolling team:", error);
+    console.error(`Error fetching matches for ladder ${ladderId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Create a new match
+ */
+export async function createMatch(ladderId: string, team1Id: string, team2Id: string, winnerId?: string) {
+  try {
+    const { data: createdMatch, errors } = await client.models.Match.create({
+      ladderId,
+      team1Id,
+      team2Id,
+      winnerId
+    });
+
+    if (errors) {
+      console.error("Error creating match:", errors);
+      throw new Error("Failed to create match");
+    }
+
+    console.log("Match created successfully:", createdMatch);
+    return createdMatch;
+  } catch (error) {
+    console.error("Error creating match:", error);
     throw error;
   }
 }

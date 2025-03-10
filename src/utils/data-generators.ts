@@ -5,13 +5,12 @@ import { uniqueRandomNames } from "./random";
 
 const client = generateClient<Schema>();
 
-type Enrollment = Schema["Enrollment"]["type"];
 type Ladder = Schema["Ladder"]["type"];
 type Player = Schema["Player"]["type"];
 type Team = Schema["Team"]["type"];
 
 /**
- * Combinations of players, ladders, teams, enrollments.
+ * Combinations of players, ladders, teams.
  *
  * Ignores all errors and nulls
  */
@@ -21,7 +20,6 @@ export async function addSampleEntities() {
   const samplePlayers: Player[] = [];
   const sampleLadders: Ladder[] = [];
   const sampleTeams: Team[] = [];
-  const sampleEnrollments: Enrollment[] = [];
 
   {
     const created = uniqueRandomNames(5).map(async (name) => {
@@ -59,24 +57,40 @@ export async function addSampleEntities() {
       return Math.floor(Math.random() * 400) + 1000; // Random rating between 1000 and 1400
     }
 
+    // Create team 1 and assign to first ladder
     const { data: team1 } = await client.models.Team.create({
       name: "The Limeys",
       rating: getRandomRating(),
+      ladderId: sampleLadders[0].id, // Assign to the first ladder
     });
 
     console.log("Add Team", team1);
 
     sampleTeams.push(team1!);
 
+    // Create team 2 and assign to second ladder
     const { data: team2 } = await client.models.Team.create({
       name: "The Yanks",
       rating: getRandomRating(),
+      ladderId: sampleLadders[1].id, // Assign to the second ladder
     });
 
-    console.log("Add Team", team1);
+    console.log("Add Team", team2);
 
     sampleTeams.push(team2!);
 
+    // Create a third team without a ladder
+    const { data: team3 } = await client.models.Team.create({
+      name: "The Aussies",
+      rating: getRandomRating(),
+      // No ladder assigned
+    });
+
+    console.log("Add Team", team3);
+
+    sampleTeams.push(team3!);
+
+    // Assign players to teams
     const { data: player1 } = await client.models.Player.update({
       id: samplePlayers[0].id,
       teamId: team1?.id,
@@ -97,29 +111,9 @@ export async function addSampleEntities() {
       teamId: team2?.id,
     });
 
+    // Leave player5 without a team if possible
+    // This player can be used by the user to join a team
+
     await Promise.all([player1, player2, player3, player4]);
-  }
-
-  {
-    const { data: enrollment1 } = await client.models.Enrollment.create({
-      ladderId: sampleLadders[0].id,
-      teamId: sampleTeams[0].id,
-    });
-
-    console.log("Add Enrollment", enrollment1);
-
-
-    sampleEnrollments.push(enrollment1!);
-
-    const { data: enrollment2 } = await client.models.Enrollment.create({
-      ladderId: sampleLadders[0].id,
-      teamId: sampleTeams[1].id,
-    });
-
-    console.log("Add Enrollment", enrollment2);
-
-    sampleEnrollments.push(enrollment2!);
-
-    await Promise.all([enrollment1, enrollment2]);
   }
 }

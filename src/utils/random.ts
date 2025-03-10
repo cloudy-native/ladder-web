@@ -3,7 +3,6 @@ import { Schema } from "../../amplify/data/resource";
 
 const client = generateClient<Schema>();
 
-type Enrollment = Schema["Enrollment"]["type"];
 type Ladder = Schema["Ladder"]["type"];
 type Player = Schema["Player"]["type"];
 type Team = Schema["Team"]["type"];

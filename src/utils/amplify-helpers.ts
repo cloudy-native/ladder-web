@@ -1,9 +1,9 @@
 import type { Schema } from "../../amplify/data/resource";
 
-type Enrollment = Schema["Enrollment"]["type"];
 type Ladder = Schema["Ladder"]["type"];
 type Player = Schema["Player"]["type"];
 type Team = Schema["Team"]["type"];
+type Match = Schema["Match"]["type"];
 
 /**
  * Check if a value is a Promise
@@ -13,29 +13,40 @@ export function isPromise(value: any): boolean {
 }
 
 /**
- * Check if a team is enrolled in a specific ladder
+ * Check if a team is in a specific ladder
  */
-export function isTeamEnrolledInLadder(
+export function isTeamInLadder(
   teamId: string, 
   ladderId: string, 
-  enrollments: Enrollment[]
+  teams: Team[]
 ): boolean {
-  return enrollments.some(
-    (enrollment) => enrollment.teamId === teamId && enrollment.ladderId === ladderId
-  );
+  const team = teams.find(team => team.id === teamId);
+  return team?.ladderId === ladderId;
 }
 
 /**
- * Find an enrollment by team and ladder IDs
+ * Find teams in a specific ladder
  */
-export function findEnrollment(
-  teamId: string, 
+export function findTeamsInLadder(
   ladderId: string, 
-  enrollments: Enrollment[]
-): Enrollment | undefined {
-  return enrollments.find(
-    (enrollment) => enrollment.teamId === teamId && enrollment.ladderId === ladderId
-  );
+  teams: Team[]
+): Team[] {
+  return teams.filter(team => team.ladderId === ladderId);
+}
+
+/**
+ * Get a team's ladder
+ */
+export function getTeamLadder(
+  teamId: string,
+  teams: Team[],
+  ladders: Ladder[]
+): Ladder | undefined {
+  const team = teams.find(team => team.id === teamId);
+  if (team?.ladderId) {
+    return ladders.find(ladder => ladder.id === team.ladderId);
+  }
+  return undefined;
 }
 
 /**
@@ -99,4 +110,44 @@ export function getPaginationInfo(
     currentItems,
     totalPages
   };
+}
+
+/**
+ * Filter matches for a ladder
+ */
+export function getMatchesForLadder(
+  ladderId: string,
+  matches: Match[]
+): Match[] {
+  return matches.filter(match => match.ladderId === ladderId);
+}
+
+/**
+ * Find matches for a team (either as team1 or team2)
+ */
+export function getMatchesForTeam(
+  teamId: string,
+  matches: Match[]
+): Match[] {
+  return matches.filter(match => 
+    match.team1Id === teamId || match.team2Id === teamId
+  );
+}
+
+/**
+ * Get team's match record (wins, losses)
+ */
+export function getTeamMatchRecord(
+  teamId: string,
+  matches: Match[]
+): { wins: number; losses: number } {
+  const teamMatches = getMatchesForTeam(teamId, matches);
+  
+  // Only count matches with a winner
+  const matchesWithWinner = teamMatches.filter(match => match.winnerId);
+  
+  const wins = matchesWithWinner.filter(match => match.winnerId === teamId).length;
+  const losses = matchesWithWinner.length - wins;
+  
+  return { wins, losses };
 }

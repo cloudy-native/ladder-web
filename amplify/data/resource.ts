@@ -1,45 +1,46 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
 /**
-  +------------+       +-------------+       +-----------+
-  |   Ladder   |       | Enrollment  |       |   Team    |
-  +------------+       +-------------+       +-----------+
-  | name       |       | ladderId    |       | name      |
-  | description|       | teamId      |       |           |
-  +------------+       +-------------+       +-----------+
-        |                 |       |                |
-        |                 |       |                |
-        |                 |       |                |
-        +-1------many-----+       +-----many--1---+
-                                                   |
-                                                   |
-                                                   |
-                                            +------+------+
-                                            |   Player    |
-                                            +-------------+
-                                            | givenName   |
-                                            | familyName  |
-                                            | email       |
-                                            | teamId      |
-                                            +-------------+
+  +------------+          +-----------+
+  |   Ladder   |          |   Team    |
+  +------------+          +-----------+
+  | name       |          | name      |
+  | description|          | ladderId  | (1:1)
+  +------------+          +-----------+
+        |                      |
+        |                      |
+        |                      |
+        +-1------many----------+
+                               |
+                               |
+                               |
+                        +------+------+
+                        |   Player    |
+                        +-------------+
+                        | givenName   |
+                        | familyName  |
+                        | email       |
+                        | teamId      |
+                        +-------------+
  */
 
 const schema = a.schema({
-  /* A ladder has many enrollments. */
+  /* A ladder has many teams. */
   Ladder: a
     .model({
       name: a.string().required(),
       description: a.string(),
-      enrollments: a.hasMany("Enrollment", "ladderId"),
+      teams: a.hasMany("Team", "ladderId"), // Changed to hasMany
       matches: a.hasMany("Match", "ladderId"),
     })
     .authorization((allow) => [allow.guest(), allow.authenticated()]),
 
-  /* A team can be enrolled in more than one ladder. And can have any number of players, which we enforce to max 2 in code. */
+  /* A team can only be on one ladder. And can have any number of players. */
   Team: a
     .model({
       name: a.string().required(),
-      enrollments: a.hasMany("Enrollment", "teamId"),
+      ladderId: a.id(), // Changed to singular ID
+      ladder: a.belongsTo("Ladder", "ladderId"), // Changed to belongsTo
       players: a.hasMany("Player", "teamId"),
       rating: a.integer().default(1200).required(),
       team1: a.hasMany("Match", "team1Id"),
@@ -56,17 +57,6 @@ const schema = a.schema({
       email: a.email().required(),
       teamId: a.id(),
       teams: a.belongsTo("Team", "teamId"),
-      // rating field removed
-    })
-    .authorization((allow) => [allow.guest(), allow.authenticated()]),
-
-  /* An enrollment belongs to exactly one ladder and one team. */
-  Enrollment: a
-    .model({
-      ladderId: a.id().required(),
-      ladder: a.belongsTo("Ladder", "ladderId"),
-      teamId: a.id().required(),
-      team: a.belongsTo("Team", "teamId"),
     })
     .authorization((allow) => [allow.guest(), allow.authenticated()]),
 

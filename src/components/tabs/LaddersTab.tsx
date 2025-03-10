@@ -147,7 +147,7 @@ export function LaddersTab() {
         console.error("Error deleting ladder:", errors);
         setDeleteError((prev) => ({
           ...prev,
-          [id]: "Failed to delete ladder. It may be in use by enrollments.",
+          [id]: "Failed to delete ladder. It may have teams or matches associated with it.",
         }));
         return;
       }
@@ -180,18 +180,14 @@ export function LaddersTab() {
 
   // Import type from resource schema
   type Team = Schema["Team"]["type"];
-  type Enrollment = Schema["Enrollment"]["type"];
   type Player = Schema["Player"]["type"];
 
   interface TeamWithPlayers extends Team {
     playersList?: Player[];
   }
 
-  // Component to display enrollments as a table sorted by rating
-  function EnrollmentsDisplay({ ladder }: { ladder: Ladder }) {
-    const [enrollmentData, setEnrollmentData] = useState<Enrollment[] | null>(
-      null
-    );
+  // Component to display teams in a ladder as a table sorted by rating
+  function TeamsDisplay({ ladder }: { ladder: Ladder }) {
     const [teamsWithPlayers, setTeamsWithPlayers] = useState<TeamWithPlayers[]>(
       []
     );
@@ -199,37 +195,33 @@ export function LaddersTab() {
     const [error, setError] = useState(false);
 
     useEffect(() => {
-      async function fetchEnrollments() {
+      async function fetchTeams() {
         setLoading(true);
         setError(false);
 
         try {
-          // Fetch enrollments for this ladder
-          const enrollmentResult = await ladder.enrollments();
+          // Fetch teams directly from the ladder
+          const teamsResult = await ladder.teams();
 
-          if (enrollmentResult.errors) {
+          if (teamsResult.errors) {
             console.error(
-              "Error fetching enrollments:",
-              enrollmentResult.errors
+              "Error fetching teams for ladder:",
+              teamsResult.errors
             );
             setError(true);
             return;
           }
 
-          const enrollments = enrollmentResult.data || [];
-          setEnrollmentData(enrollments);
-
-          // If we have enrollments, fetch the team info and players for each one
-          if (enrollments.length > 0) {
+          const teams = teamsResult.data || [];
+          
+          // If we have teams, fetch the players for each one
+          if (teams.length > 0) {
             const teamsData: TeamWithPlayers[] = [];
 
-            // Create an array of promises to fetch teams in parallel
-            const teamPromises = enrollments.map(async (enrollment) => {
+            // Create an array of promises to fetch players for teams in parallel
+            const teamPromises = teams.map(async (team) => {
               try {
-                const teamResult = await enrollment.team();
-                if (teamResult.data && teamResult.data.id) {
-                  const team = teamResult.data;
-
+                if (team && team.id) {
                   // Fetch players for this team
                   const playersResult = await team.players();
                   const players = playersResult.data || [];
@@ -240,7 +232,7 @@ export function LaddersTab() {
                   });
                 }
               } catch (err) {
-                console.error("Error fetching team or players:", err);
+                console.error("Error fetching players for team:", err);
               }
             });
 
@@ -251,16 +243,18 @@ export function LaddersTab() {
             teamsData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
             setTeamsWithPlayers(teamsData);
+          } else {
+            setTeamsWithPlayers([]);
           }
         } catch (err) {
-          console.error("Exception fetching enrollments:", err);
+          console.error("Exception fetching teams for ladder:", err);
           setError(true);
         } finally {
           setLoading(false);
         }
       }
 
-      fetchEnrollments();
+      fetchTeams();
     }, [ladder]);
 
     if (loading) return <Text fontSize="sm">Loading teams...</Text>;
@@ -270,8 +264,8 @@ export function LaddersTab() {
           Error loading teams
         </Text>
       );
-    if (!enrollmentData || enrollmentData.length === 0)
-      return <Text fontSize="sm">No teams enrolled</Text>;
+    if (teamsWithPlayers.length === 0)
+      return <Text fontSize="sm">No teams in this ladder</Text>;
 
     // Format player names
     function formatPlayers(players?: Player[]) {
@@ -285,8 +279,8 @@ export function LaddersTab() {
     return (
       <Box>
         <Text fontSize="sm" fontWeight="medium" mb={3}>
-          {enrollmentData.length} team{enrollmentData.length !== 1 ? "s" : ""}{" "}
-          enrolled:
+          {teamsWithPlayers.length} team{teamsWithPlayers.length !== 1 ? "s" : ""}{" "}
+          in ladder:
         </Text>
 
         <Table.Root size="sm">
@@ -442,7 +436,7 @@ export function LaddersTab() {
               </Card.Header>
               <Card.Body>
                 <Box mt={2} mb={2} overflowX="auto">
-                  <EnrollmentsDisplay ladder={ladder} />
+                  <TeamsDisplay ladder={ladder} />
                 </Box>
 
                 <HStack fontSize="sm" color="gray.500" mt={4}>

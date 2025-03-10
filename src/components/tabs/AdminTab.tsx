@@ -13,63 +13,35 @@ import { generateClient } from "aws-amplify/data";
 import { useEffect, useState } from "react";
 import { IoBeaker, IoRefresh, IoTrash } from "react-icons/io5";
 import type { Schema } from "../../../amplify/data/resource";
-import { deleteAllItems } from "../../utils/data-fetchers";
 import { addSampleEntities } from "../../utils/data-generators";
 import { nameFor } from "../../utils/random";
 import { RelationCell } from "../shared/RelationCell";
+import { deleteAllItems } from "../../utils/data-fetchers";
 
 const client = generateClient<Schema>();
 
-type Enrollment = Schema["Enrollment"]["type"];
 type Ladder = Schema["Ladder"]["type"];
 type Player = Schema["Player"]["type"];
 type Team = Schema["Team"]["type"];
 
 export function AdminTab() {
   const [isLoading, setIsLoading] = useState({
-    enrollments: false,
     ladders: false,
     players: false,
     teams: false,
   });
 
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [ladders, setLadders] = useState<Ladder[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
 
-  async function getEnrollments() {
-    try {
-      const { data, errors } = await client.models.Enrollment.list();
-
-      if (errors) {
-        console.error("Enrollment list errors:", errors);
-        // Don't throw here, just log and recover
-        console.warn(
-          "Continuing with available enrollment data despite errors"
-        );
-        const validEnrollments =
-          data?.filter((enrollment) => enrollment !== null) || [];
-        setEnrollments(validEnrollments);
-        return;
-      }
-
-      setEnrollments(data || []);
-    } catch (error) {
-      console.error("Exception in getEnrollments:", error);
-      setEnrollments([]);
-      // Don't rethrow to prevent crashing the entire app
-      console.warn("Recovering from enrollment fetch error");
-    }
-  }
-
   async function getLadders() {
     try {
+      setIsLoading((prev) => ({ ...prev, ladders: true }));
       const { data, errors } = await client.models.Ladder.list();
 
       if (errors) {
         console.error("Ladder list errors:", errors);
-        // Don't throw here, just log and recover
         console.warn("Continuing with available ladder data despite errors");
         const validLadders = data?.filter((ladder) => ladder !== null) || [];
         setLadders(validLadders);
@@ -80,23 +52,22 @@ export function AdminTab() {
     } catch (error) {
       console.error("Exception in getLadders:", error);
       setLadders([]);
-      // Don't rethrow to prevent crashing the entire app
       console.warn("Recovering from ladder fetch error");
+    } finally {
+      setIsLoading((prev) => ({ ...prev, ladders: false }));
     }
   }
 
   async function getPlayers() {
     try {
+      setIsLoading((prev) => ({ ...prev, players: true }));
       const { data, errors } = await client.models.Player.list();
 
       if (errors) {
         console.error("Player list errors:", errors);
-        // Don't throw here, just log and recover
         console.warn("Continuing with available player data despite errors");
       }
 
-      // Always filter the data to ensure we only work with valid player objects
-      // This handles both error and non-error cases
       if (data && Array.isArray(data)) {
         const validPlayers = data.filter(
           (player) =>
@@ -113,23 +84,22 @@ export function AdminTab() {
     } catch (error) {
       console.error("Exception in getPlayers:", error);
       setPlayers([]);
-      // Don't rethrow to prevent crashing the entire app
       console.warn("Recovering from player fetch error");
+    } finally {
+      setIsLoading((prev) => ({ ...prev, players: false }));
     }
   }
 
   async function getTeams() {
     try {
+      setIsLoading((prev) => ({ ...prev, teams: true }));
       const { data, errors } = await client.models.Team.list();
 
       if (errors) {
         console.error("Team list errors:", errors);
-        // Don't throw here, just log and recover
         console.warn("Continuing with available team data despite errors");
       }
 
-      // Always filter the data to ensure we only work with valid team objects
-      // This handles both error and non-error cases
       if (data && Array.isArray(data)) {
         const validTeams = data.filter(
           (team) =>
@@ -141,20 +111,15 @@ export function AdminTab() {
       }
     } catch (error) {
       console.error("Exception in getTeams:", error);
-      // Set empty array to avoid undefined errors
       setTeams([]);
-      // Don't rethrow to prevent crashing the entire app
       console.warn("Recovering from team fetch error");
+    } finally {
+      setIsLoading((prev) => ({ ...prev, teams: false }));
     }
   }
 
   async function getAll() {
-    // Use Promise.allSettled instead of Promise.all to prevent one failure from stopping all fetches
     const results = await Promise.allSettled([
-      getEnrollments().catch((err) => {
-        console.error("Error fetching enrollments:", err);
-        setEnrollments([]);
-      }),
       getLadders().catch((err) => {
         console.error("Error fetching ladders:", err);
         setLadders([]);
@@ -169,28 +134,22 @@ export function AdminTab() {
       }),
     ]);
 
-    // Log overall results
     const successful = results.filter((r) => r.status === "fulfilled").length;
-    console.log(`Data loading complete: ${successful}/4 successful`);
+    console.log(`Data loading complete: ${successful}/3 successful`);
 
-    if (successful < 4) {
+    if (successful < 3) {
       console.warn("Some data fetches failed. UI may be incomplete.");
     }
   }
 
-  // Function to refresh data
   const refreshData = () => {
     getAll();
   };
 
-  // Load data once on component mount
   useEffect(() => {
     refreshData();
   }, []);
 
-  /**
-   * Wrapper for the utility deleteAllItems function that handles loading state
-   */
   async function deleteAllItemsWithLoading<T extends { id: string }>({
     items,
     modelName,
@@ -202,30 +161,17 @@ export function AdminTab() {
     entityType: keyof typeof isLoading;
     refreshFunction: () => Promise<void>;
   }) {
-    // Set loading state for this entity type
     setIsLoading((prev) => ({ ...prev, [entityType]: true }));
 
     try {
-      // Use the utility function
       await deleteAllItems({ items, modelName });
     } catch (error) {
       console.error(`Error deleting ${String(modelName)}s:`, error);
     } finally {
-      // Reset loading state
       setIsLoading((prev) => ({ ...prev, [entityType]: false }));
-      // Refresh the list
       await refreshFunction();
     }
   }
-
-  // Simplified delete functions using the wrapped deleteAllItems function
-  const deleteAllEnrollments = () =>
-    deleteAllItemsWithLoading({
-      items: enrollments,
-      modelName: "Enrollment",
-      entityType: "enrollments",
-      refreshFunction: getEnrollments,
-    });
 
   const deleteAllLadders = () =>
     deleteAllItemsWithLoading({
@@ -252,18 +198,14 @@ export function AdminTab() {
     });
 
   async function deleteAll() {
-    // Set all loading states
     setIsLoading({
-      enrollments: true,
       ladders: true,
       players: true,
       teams: true,
     });
 
     try {
-      // Run all delete operations in parallel
       await Promise.all([
-        deleteAllEnrollments(),
         deleteAllLadders(),
         deleteAllPlayers(),
         deleteAllTeams(),
@@ -273,9 +215,7 @@ export function AdminTab() {
     } catch (error) {
       console.error("Error during bulk delete:", error);
     } finally {
-      // Ensure loading states are reset in case of error
       setIsLoading({
-        enrollments: false,
         ladders: false,
         players: false,
         teams: false,
@@ -284,37 +224,10 @@ export function AdminTab() {
   }
 
   function TeamsForPlayerTableCell({ player }: { player: Player }) {
-    // Using the generic RelationCell component
     return (
       <RelationCell<Team>
         fetchRelation={() => player.teams()}
         renderData={(team) => (team?.name ? team.name : "—")}
-      />
-    );
-  }
-
-  function TeamForEnrollmentTableCell({
-    enrollment,
-  }: {
-    enrollment: Enrollment;
-  }) {
-    return (
-      <RelationCell<Team>
-        fetchRelation={() => enrollment.team()}
-        renderData={(team) => (team?.name ? team.name : "—")}
-      />
-    );
-  }
-
-  function LadderForEnrollmentTableCell({
-    enrollment,
-  }: {
-    enrollment: Enrollment;
-  }) {
-    return (
-      <RelationCell<Ladder>
-        fetchRelation={() => enrollment.ladder()}
-        renderData={(ladder) => (ladder?.name ? ladder.name : "—")}
       />
     );
   }
@@ -332,38 +245,21 @@ export function AdminTab() {
     );
   }
 
-  function EnrolledTeamsForLadderTableCell({ ladder }: { ladder: Ladder }) {
+  function TeamsForLadderTableCell({ ladder }: { ladder: Ladder }) {
     return (
-      <RelationCell<Enrollment[]>
-        fetchRelation={() => ladder.enrollments()}
-        renderData={async (enrollments) => {
-          if (!enrollments || enrollments.length === 0) return "—";
-
-          try {
-            // Use Promise.all to fetch all teams in parallel
-            const teamPromises = enrollments.map(async (enrollment) => {
-              const teamResult = await enrollment.team();
-              return teamResult.data?.name;
-            });
-
-            const names = (await Promise.all(teamPromises)).filter(
-              (name): name is string => name !== null && name !== undefined
-            );
-
-            // Use Set to remove duplicates
-            return [...new Set(names)].join(", ") || "—";
-          } catch (error) {
-            console.error("Error fetching teams for ladder:", error);
-            return "Error loading teams";
-          }
-        }}
+      <RelationCell<Team[]>
+        fetchRelation={() => ladder.teams()}
+        renderData={(teams) =>
+          teams && teams.length > 0
+            ? teams.map((p) => p.name).join(", ")
+            : "—"
+        }
       />
     );
   }
 
   async function sampleData() {
     await addSampleEntities();
-
     refreshData();
   }
 
@@ -396,7 +292,7 @@ export function AdminTab() {
                   <Table.ColumnHeader>Id</Table.ColumnHeader>
                   <Table.ColumnHeader>Name</Table.ColumnHeader>
                   <Table.ColumnHeader>Description</Table.ColumnHeader>
-                  <Table.ColumnHeader>Enrolled Teams</Table.ColumnHeader>
+                  <Table.ColumnHeader>Teams</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -405,7 +301,7 @@ export function AdminTab() {
                     <Table.Cell>{ladder.id}</Table.Cell>
                     <Table.Cell>{ladder.name}</Table.Cell>
                     <Table.Cell>{ladder.description}</Table.Cell>
-                    <EnrolledTeamsForLadderTableCell ladder={ladder} />
+                    <TeamsForLadderTableCell ladder={ladder} />
                   </Table.Row>
                 ))}
               </Table.Body>
@@ -471,6 +367,7 @@ export function AdminTab() {
                 <Table.Row>
                   <Table.ColumnHeader>Id</Table.ColumnHeader>
                   <Table.ColumnHeader>Name</Table.ColumnHeader>
+                  <Table.ColumnHeader>Ladder</Table.ColumnHeader>
                   <Table.ColumnHeader>Players</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
@@ -479,6 +376,12 @@ export function AdminTab() {
                   <Table.Row key={team.id}>
                     <Table.Cell>{team.id}</Table.Cell>
                     <Table.Cell>{team.name}</Table.Cell>
+                    <Table.Cell>
+                      <RelationCell<Ladder>
+                        fetchRelation={() => team.ladder()}
+                        renderData={(ladder) => (ladder?.name ? ladder.name : "—")}
+                      />
+                    </Table.Cell>
                     <PlayersForTeamTableCell team={team} />
                   </Table.Row>
                 ))}
@@ -493,42 +396,6 @@ export function AdminTab() {
             >
               <IoTrash />
               Delete All Teams
-            </Button>
-          </Card.Footer>
-        </Card.Root>
-
-        <Card.Root>
-          <Card.Header>
-            <Heading size="md">Enrollments</Heading>
-          </Card.Header>
-          <Card.Body>
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeader>Id</Table.ColumnHeader>
-                  <Table.ColumnHeader>Ladder</Table.ColumnHeader>
-                  <Table.ColumnHeader>Team</Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {enrollments.map((enrollment) => (
-                  <Table.Row key={enrollment.id}>
-                    <Table.Cell>{enrollment.id}</Table.Cell>
-                    <LadderForEnrollmentTableCell enrollment={enrollment} />
-                    <TeamForEnrollmentTableCell enrollment={enrollment} />
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
-          </Card.Body>
-          <Card.Footer>
-            <Button
-              loading={isLoading.enrollments}
-              onClick={deleteAllEnrollments}
-              disabled={isLoading.enrollments}
-            >
-              <IoTrash />
-              Delete All Enrollments
             </Button>
           </Card.Footer>
         </Card.Root>
