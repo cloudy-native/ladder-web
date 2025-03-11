@@ -101,7 +101,6 @@ export function TeamsTab() {
   // Function to refresh all data
   const refreshData = () => {
     refreshTeams();
-    refreshPlayer();
     // Reset to first page on refresh
     setCurrentPage(1);
     // Clear filter
@@ -181,7 +180,7 @@ export function TeamsTab() {
           <Alert.Title>No teams found</Alert.Title>
         </Alert.Root>
       ) : (
-        <VStack align="stretch" spacing={4}>
+        <VStack align="stretch" >
           {/* Teams for current page */}
           <VStack align="stretch">
             {filteredTeams.length === 0 ? (

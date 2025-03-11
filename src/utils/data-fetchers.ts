@@ -1,13 +1,15 @@
 "use client";
 
-import { LadderModel, MatchModel, models, PlayerModel, TeamModel } from "./amplify-helpers";
+import { generateClient } from "aws-amplify/api";
+import { getClient, ladderClient, matchClient, playerClient, teamClient } from "./amplify-helpers";
+import { Schema } from "../../amplify/data/resource";
 
 /**
  * Fetches all teams from the database
  */
 export async function getTeams() {
   try {
-    const { data: teamData, errors } = await TeamModel.list({
+    const { data: teamData, errors } = await teamClient().list({
       selectionSet: [
         "id",
         "name",
@@ -45,7 +47,7 @@ export async function getTeams() {
  */
 export async function getTeamWithPlayers(teamId: string) {
   try {
-    const { data: team, errors } = await TeamModel.get({
+    const { data: team, errors } = await teamClient().get({
       id: teamId,
     });
 
@@ -63,14 +65,14 @@ export async function getTeamWithPlayers(teamId: string) {
     let player2 = null;
 
     if (team.player1Id) {
-      const player1Result = await PlayerModel.get({
+      const player1Result = await playerClient().get({
         id: team.player1Id,
       });
       player1 = player1Result.data;
     }
 
     if (team.player2Id) {
-      const player2Result = await PlayerModel.get({
+      const player2Result = await playerClient().get({
         id: team.player2Id,
       });
       player2 = player2Result.data;
@@ -92,7 +94,7 @@ export async function getTeamWithPlayers(teamId: string) {
  */
 export async function getTeamsForLadder(ladderId: string) {
   try {
-    const { data: teamData, errors } = await TeamModel.list({
+    const { data: teamData, errors } = await teamClient().list({
       filter: { ladderId: { eq: ladderId } },
       selectionSet: [
         "id",
@@ -143,7 +145,7 @@ export async function getTeamsForLadder(ladderId: string) {
  */
 export async function getLadders() {
   try {
-    const { data: ladderData, errors } = await LadderModel.list({
+    const { data: ladderData, errors } = await ladderClient().list({
       selectionSet: ["id", "name", "description", "teams.*"],
     });
 
@@ -179,7 +181,7 @@ export async function getLadders() {
  */
 export async function getLadderWithTeams(ladderId: string) {
   try {
-    const { data: ladder, errors } = await LadderModel.get({
+    const { data: ladder, errors } = await ladderClient().get({
       id: ladderId,
     });
 
@@ -210,7 +212,7 @@ export async function getLadderWithTeams(ladderId: string) {
  */
 export async function getTeamLadder(teamId: string) {
   try {
-    const { data: team, errors } = await TeamModel.get({
+    const { data: team, errors } = await teamClient().get({
       id: teamId,
     });
 
@@ -220,7 +222,7 @@ export async function getTeamLadder(teamId: string) {
     }
 
     if (team && team.ladderId) {
-      const { data: ladder } = await LadderModel.get({
+      const { data: ladder } = await ladderClient().get({
         id: team.ladderId,
       });
 
@@ -239,7 +241,7 @@ export async function getTeamLadder(teamId: string) {
  */
 export async function getAllPlayers() {
   try {
-    const { data: playerData, errors } = await PlayerModel.list({
+    const { data: playerData, errors } = await playerClient().list({
       selectionSet: [
         "id",
         "givenName",
@@ -288,7 +290,7 @@ export async function getAllPlayers() {
  */
 export async function getPlayerById(playerId: string) {
   try {
-    const { data: player, errors } = await PlayerModel.get({
+    const { data: player, errors } = await playerClient().get({
       id: playerId,
     });
 
@@ -300,13 +302,13 @@ export async function getPlayerById(playerId: string) {
     // Fetch the related team data if needed
     if (player) {
       // Get teams where this player is player1
-      const player1TeamsResult = await TeamModel.list({
+      const player1TeamsResult = await teamClient().list({
         filter: { player1Id: { eq: playerId } },
         selectionSet: ["id", "name", "rating", "ladderId"],
       });
 
       // Get teams where this player is player2
-      const player2TeamsResult = await TeamModel.list({
+      const player2TeamsResult = await teamClient().list({
         filter: { player2Id: { eq: playerId } },
         selectionSet: ["id", "name", "rating", "ladderId"],
       });
@@ -358,7 +360,7 @@ export async function createTeam(
   player2Id?: string
 ) {
   try {
-    const { data: createdTeam, errors } = await TeamModel.create({
+    const { data: createdTeam, errors } = await teamClient().create({
       name: name.trim(),
       rating: rating,
       ladderId: ladderId,
@@ -387,7 +389,7 @@ export async function updateTeamLadder(
   ladderId: string | null
 ) {
   try {
-    const { data: updatedTeam, errors } = await TeamModel.update({
+    const { data: updatedTeam, errors } = await teamClient().update({
       id: teamId,
       ladderId: ladderId,
     });
@@ -435,7 +437,7 @@ export async function addPlayerToTeam(
     }
 
     // Update the team with the player
-    const { data: updatedTeam, errors } = await TeamModel.update({
+    const { data: updatedTeam, errors } = await teamClient().update({
       id: teamId,
       [slot === "player1" ? "player1Id" : "player2Id"]: playerId,
     });
@@ -468,7 +470,7 @@ export async function removePlayerFromTeam(
     }
 
     // Update the team to remove the player
-    const { data: updatedTeam, errors } = await TeamModel.update({
+    const { data: updatedTeam, errors } = await teamClient().update({
       id: teamId,
       [slot === "player1" ? "player1Id" : "player2Id"]: null,
     });
@@ -491,7 +493,7 @@ export async function removePlayerFromTeam(
  */
 export async function deleteTeam(id: string) {
   try {
-    const { errors } = await TeamModel.delete({ id });
+    const { errors } = await teamClient().delete({ id });
 
     if (errors) {
       console.error("Error deleting team:", errors);
@@ -511,7 +513,7 @@ export async function deleteTeam(id: string) {
  */
 export async function createLadder(name: string, description?: string) {
   try {
-    const { data: createdLadder, errors } = await LadderModel.create({
+    const { data: createdLadder, errors } = await ladderClient().create({
       name: name.trim(),
       description: description?.trim() || undefined,
     });
@@ -534,7 +536,7 @@ export async function createLadder(name: string, description?: string) {
  */
 export async function deleteLadder(id: string) {
   try {
-    const { errors } = await LadderModel.delete({ id });
+    const { errors } = await ladderClient().delete({ id });
 
     if (errors) {
       console.error("Error deleting ladder:", errors);
@@ -558,7 +560,7 @@ export async function createPlayer(
   email: string
 ) {
   try {
-    const { data: createdPlayer, errors } = await PlayerModel.create({
+    const { data: createdPlayer, errors } = await playerClient().create({
       givenName: givenName.trim(),
       familyName: familyName.trim(),
       email: email.trim(),
@@ -589,7 +591,7 @@ export async function updatePlayer(
   }
 ) {
   try {
-    const { data: updatedPlayer, errors } = await PlayerModel.update({
+    const { data: updatedPlayer, errors } = await playerClient().update({
       id: playerId,
       ...data,
     });
@@ -653,7 +655,7 @@ export async function canTeamJoinLadder(teamId: string, ladderId: string) {
  */
 export async function getMatchesForLadder(ladderId: string) {
   try {
-    const { data: matchData, errors } = await MatchModel.list({
+    const { data: matchData, errors } = await matchClient().list({
       filter: { ladderId: { eq: ladderId } },
       selectionSet: ["id", "ladderId", "team1Id", "team2Id", "winnerId"],
     });
@@ -697,7 +699,7 @@ export async function createMatch(
   winnerId?: string
 ) {
   try {
-    const { data: createdMatch, errors } = await MatchModel.create({
+    const { data: createdMatch, errors } = await matchClient().create({
       ladderId,
       team1Id,
       team2Id,
@@ -716,6 +718,10 @@ export async function createMatch(
     throw error;
   }
 }
+
+// TODO: export from amplify-helpers
+//
+const {models} = generateClient<Schema>();
 
 /**
  * Generic function to delete all items of a specific type

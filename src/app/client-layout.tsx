@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import { ChakraProvider } from "@chakra-ui/react";
 import { StrictMode, useEffect } from "react";
@@ -6,6 +6,7 @@ import { theme } from "../theme/theme";
 import { Layout } from "../components/ui/layout/Layout";
 import { Amplify } from "aws-amplify";
 import config from "../../amplify_outputs.json";
+import { Authenticator } from "@aws-amplify/ui-react";
 
 export default function ClientLayout({
   children,
@@ -15,24 +16,16 @@ export default function ClientLayout({
   // Initialize Amplify for data operations
   useEffect(() => {
     console.log("Configuring Amplify in client-layout");
-    Amplify.configure({
-      API: {
-        GraphQL: {
-          endpoint: config.data.url,
-          region: config.data.aws_region,
-          defaultAuthMode: 'apiKey'
-        }
-      }
-    });
+    Amplify.configure(config);
     console.log("Amplify configured successfully");
   }, []);
 
   return (
     <StrictMode>
       <ChakraProvider value={theme}>
-        <Layout>
-          {children}
-        </Layout>
+        <Authenticator>
+          <Layout>{children}</Layout>
+        </Authenticator>
       </ChakraProvider>
     </StrictMode>
   );

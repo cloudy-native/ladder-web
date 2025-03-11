@@ -9,13 +9,13 @@ let clientInitialized = false;
 
 // Encapsulate client
 //
-function getClient() {
+export function getClient() {
   if (!clientInstance) {
     try {
       console.log("Creating Amplify client instance");
       clientInstance = generateClient<Schema>();
       clientInitialized = true;
-      console.log("Amplify client created successfully");
+      console.log("Amplify client created successfully", clientInstance);
     } catch (error) {
       console.error("Error generating Amplify client:", error);
 
@@ -36,14 +36,21 @@ function getClient() {
   return clientInstance;
 }
 
-// TODO: might not be OK exporting this eagerly
-//
-export const models = getClient()?.models;
+export function ladderClient() {
+  return getClient().models.Ladder;
+}
 
-export const LadderModel = models.Ladder;
-export const MatchModel = models.Match;
-export const PlayerModel = models.Player;
-export const TeamModel = models.Team;
+export function matchClient() {
+  return getClient().models.Match;
+}
+
+export function playerClient() {
+  return getClient().models.Player;
+}
+
+export function teamClient() {
+  return getClient().models.Team;
+}
 
 export type Ladder = Schema["Ladder"]["type"];
 export type Match = Schema["Match"]["type"];

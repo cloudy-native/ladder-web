@@ -3,17 +3,18 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Ladder,
-  LadderModel,
+  ladderClient,
   Player,
-  PlayerModel,
+  playerClient,
   Team,
-  TeamModel,
 } from "../amplify-helpers";
 import {
   createLadder as createLadderApi,
   deleteLadder as deleteLadderApi,
   getLadders,
 } from "../data-fetchers";
+import { generateClient } from "aws-amplify/api";
+import { Schema } from "../../../amplify/data/resource";
 
 export function useLadderList() {
   const [ladders, setLadders] = useState<Ladder[]>([]);
@@ -63,7 +64,7 @@ export function useLadderSelect() {
     setError(null);
 
     try {
-      const { data: ladderData, errors } = await LadderModel.list();
+      const { data: ladderData, errors } = await ladderClient().list();
 
       if (errors) {
         console.error("Error fetching ladders:", errors);
@@ -221,7 +222,7 @@ export function useTeamsForLadder(ladderId: string) {
 
     try {
       // Fetch teams for this ladder using filter
-      const teamsResult = await TeamModel.list({
+      const teamsResult = await teamClient().list({
         filter: { ladderId: { eq: ladderId } },
         selectionSet: [
           "id",
@@ -254,7 +255,7 @@ export function useTeamsForLadder(ladderId: string) {
 
             // Fetch player1 if it exists
             if (team.player1Id) {
-              const player1Result = await PlayerModel.get({
+              const player1Result = await playerClient().get({
                 id: team.player1Id,
               });
               if (player1Result.data) {
@@ -264,7 +265,7 @@ export function useTeamsForLadder(ladderId: string) {
 
             // Fetch player2 if it exists
             if (team.player2Id) {
-              const player2Result = await PlayerModel.get({
+              const player2Result = await playerClient().get({
                 id: team.player2Id,
               });
               if (player2Result.data) {

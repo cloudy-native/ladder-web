@@ -5,13 +5,13 @@
 import { faker } from "@faker-js/faker";
 import {
   Ladder,
-  LadderModel,
+  ladderClient,
   Match,
-  MatchModel,
+  matchClient,
   Player,
-  PlayerModel,
+  playerClient,
   Team,
-  TeamModel,
+  teamClient,
 } from "./amplify-helpers";
 
 // =================== DATA DEFINITIONS ===================
@@ -185,37 +185,37 @@ async function clearExistingData() {
 
   try {
     // First delete teams to avoid foreign key constraints
-    const { data: teams } = await TeamModel.list();
+    const { data: teams } = await teamClient().list();
     if (teams && teams.length > 0) {
       for (const team of teams) {
-        await TeamModel.delete({ id: team.id });
+        await teamClient().delete({ id: team.id });
       }
       console.log(`Deleted ${teams.length} teams`);
     }
 
     // Delete ladders
-    const { data: ladders } = await LadderModel.list();
+    const { data: ladders } = await ladderClient().list();
     if (ladders && ladders.length > 0) {
       for (const ladder of ladders) {
-        await LadderModel.delete({ id: ladder.id });
+        await ladderClient().delete({ id: ladder.id });
       }
       console.log(`Deleted ${ladders.length} ladders`);
     }
 
     // Delete players
-    const { data: players } = await PlayerModel.list();
+    const { data: players } = await playerClient().list();
     if (players && players.length > 0) {
       for (const player of players) {
-        await PlayerModel.delete({ id: player.id });
+        await playerClient().delete({ id: player.id });
       }
       console.log(`Deleted ${players.length} players`);
     }
 
     // Delete matches
-    const { data: matches } = await MatchModel.list();
+    const { data: matches } = await matchClient().list();
     if (matches && matches.length > 0) {
       for (const match of matches) {
-        await MatchModel.delete({ id: match.id });
+        await matchClient().delete({ id: match.id });
       }
       console.log(`Deleted ${matches.length} matches`);
     }
@@ -312,7 +312,7 @@ async function generatePlayers(count: number): Promise<Player[]> {
       const clubIndex = Math.floor(Math.random() * RACKET_CLUBS.length);
 
       // Create the player
-      const { data, errors } = await PlayerModel.create({
+      const { data, errors } = await playerClient().create({
         givenName: playerInfo.givenName,
         familyName: playerInfo.familyName,
         email: playerInfo.email,
@@ -353,7 +353,7 @@ async function generateLadders(count: number): Promise<Ladder[]> {
     for (let i = 0; i < actualCount; i++) {
       const division = LADDER_DIVISIONS[i];
 
-      const { data, errors } = await LadderModel.create({
+      const { data, errors } = await ladderClient().create({
         name: division.name,
         description: division.description,
       });
@@ -469,7 +469,7 @@ async function generateMatches(
           dates[Math.floor(Math.random() * dates.length)].toISOString();
 
         // Create the match
-        const { data, errors } = await MatchModel.create({
+        const { data, errors } = await matchClient().create({
           ladderId,
           team1Id: team1.id,
           team2Id: team2.id,
@@ -567,7 +567,7 @@ async function generateTeams(
       }
 
       // Create team
-      const { data, errors } = await TeamModel.create({
+      const { data, errors } = await teamClient().create({
         name: namePrefix + shuffledTeamNames[i],
         rating,
         ladderId,
@@ -606,7 +606,7 @@ async function generateTeams(
 
         // Update team with players
         const { data: updatedTeam, errors: updateErrors } =
-          await TeamModel.update({
+          await teamClient().update({
             id: data.id,
             player1Id: player1.id,
             player2Id: player2?.id,

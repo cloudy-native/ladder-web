@@ -18,7 +18,7 @@ import {
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import { IoAddCircle, IoClose, IoRefresh, IoTrash } from "react-icons/io5";
-import { Ladder, Player } from "../../utils/amplify-helpers";
+import { Ladder, Player } from '../../utils/amplify-helpers';
 import {
   useFilter,
   useLadderCreate,

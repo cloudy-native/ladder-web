@@ -18,7 +18,7 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { IoAddCircle, IoClose, IoRefresh } from "react-icons/io5";
-import { Player, PlayerModel, TeamModel } from "../../utils/amplify-helpers";
+import { Player, playerClient } from "../../utils/amplify-helpers";
 import {
   DialogActionTrigger,
   DialogBody,
@@ -84,7 +84,7 @@ export function PlayersTab() {
     setLoading(true);
 
     try {
-      const { data: playerData, errors } = await PlayerModel.list();
+      const { data: playerData, errors } = await playerClient().list();
 
       if (errors) {
         console.error("Error fetching players:", errors);
@@ -157,7 +157,7 @@ export function PlayersTab() {
     setIsCreatingPlayer(true);
 
     try {
-      const { data: createdPlayer, errors } = await PlayerModel.create({
+      const { data: createdPlayer, errors } = await playerClient().create({
         givenName: newPlayerGivenName.trim(),
         familyName: newPlayerFamilyName.trim(),
         email: newPlayerEmail.trim(),

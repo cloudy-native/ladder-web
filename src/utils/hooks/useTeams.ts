@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Ladder,
-  LadderModel,
+  ladderClient,
   Player,
-  PlayerModel,
+  playerClient,
   Team,
-  TeamModel,
+  teamClient,
 } from "../amplify-helpers";
 
 export interface TeamWithPlayers extends Team {
@@ -26,7 +26,7 @@ export function useTeamList() {
     setError(null);
 
     try {
-      const { data: teamData, errors } = await TeamModel.list({
+      const { data: teamData, errors } = await teamClient().list({
         selectionSet: [
           "id",
           "name",
@@ -59,7 +59,7 @@ export function useTeamList() {
             // Fetch player1 if it exists
             let player1 = null;
             if (team.player1Id) {
-              const player1Result = await PlayerModel.get({
+              const player1Result = await playerClient().get({
                 id: team.player1Id,
               });
               player1 = player1Result.data;
@@ -68,7 +68,7 @@ export function useTeamList() {
             // Fetch player2 if it exists
             let player2 = null;
             if (team.player2Id) {
-              const player2Result = await PlayerModel.get({
+              const player2Result = await playerClient().get({
                 id: team.player2Id,
               });
               player2 = player2Result.data;
@@ -77,7 +77,7 @@ export function useTeamList() {
             // Fetch ladder for this team if it has one
             let ladder = null;
             if (team.ladderId) {
-              const ladderResult = await LadderModel.get({
+              const ladderResult = await ladderClient().get({
                 id: team.ladderId,
               });
               ladder = ladderResult.data;
@@ -154,7 +154,7 @@ export function useTeamCreate() {
       setIsCreating(true);
 
       try {
-        const { data: createdTeam, errors } = await TeamModel.create({
+        const { data: createdTeam, errors } = await teamClient().create({
           name: name.trim(),
           rating: parsedRating !== 0 ? parsedRating || 1200 : 0,
           player1Id: player1Id || undefined,
@@ -216,7 +216,7 @@ export function useTeamDelete() {
             return false;
           }
 
-          const { errors } = await TeamModel.delete({ id });
+          const { errors } = await teamClient().delete({ id });
 
           if (errors) {
             console.error("Error deleting team:", errors);
@@ -302,12 +302,12 @@ export function useTeamJoin() {
 
         // Check if player is already on another team
         // First check if current player is already on a team as player1
-        const playerAsPlayer1Teams = await TeamModel.list({
+        const playerAsPlayer1Teams = await teamClient().list({
           filter: { player1Id: { eq: currentPlayer.id } },
         });
 
         // Then check if current player is already on a team as player2
-        const playerAsPlayer2Teams = await TeamModel.list({
+        const playerAsPlayer2Teams = await teamClient().list({
           filter: { player2Id: { eq: currentPlayer.id } },
         });
 
@@ -337,7 +337,7 @@ export function useTeamJoin() {
 
           if (currentTeamId && currentSlot) {
             // Remove from current team
-            const { errors: leaveErrors } = await TeamModel.update({
+            const { errors: leaveErrors } = await teamClient().update({
               id: currentTeamId,
               [currentSlot]: null,
             });
@@ -351,7 +351,7 @@ export function useTeamJoin() {
         }
 
         // Update the team to add the player
-        const { data: updatedTeam, errors } = await TeamModel.update({
+        const { data: updatedTeam, errors } = await teamClient().update({
           id: teamId,
           [slot]: currentPlayer.id,
         });
@@ -388,7 +388,7 @@ export function useTeamJoin() {
 
       try {
         // Check if player is in this team and which slot
-        const { data: team } = await TeamModel.get({ id: teamId });
+        const { data: team } = await teamClient().get({ id: teamId });
 
         if (!team) {
           setJoinError("Team not found");
@@ -410,7 +410,7 @@ export function useTeamJoin() {
         }
 
         // Update the team to remove the player
-        const { data: updatedTeam, errors } = await TeamModel.update({
+        const { data: updatedTeam, errors } = await teamClient().update({
           id: teamId,
           [slot]: null,
         });
@@ -453,14 +453,14 @@ export function useTeamLadder() {
 
       try {
         // Check if the team already has a ladder
-        const { data: team } = await TeamModel.get({ id: teamId });
+        const { data: team } = await teamClient().get({ id: teamId });
 
         if (team?.ladderId === ladderId) {
           console.log("Team already in this ladder");
           return true;
         }
 
-        const { data: updatedTeam, errors } = await TeamModel.update({
+        const { data: updatedTeam, errors } = await teamClient().update({
           id: teamId,
           ladderId: ladderId,
         });
@@ -489,7 +489,7 @@ export function useTeamLadder() {
     setIsUpdating(true);
 
     try {
-      const { data: updatedTeam, errors } = await TeamModel.update({
+      const { data: updatedTeam, errors } = await teamClient().update({
         id: teamId,
         ladderId: null, // Remove the ladder association
       });

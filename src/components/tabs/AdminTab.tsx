@@ -15,14 +15,14 @@ import { useEffect, useState } from "react";
 import { IoBeaker, IoRefresh, IoTrash, IoTrophy } from "react-icons/io5";
 import {
   Ladder,
-  LadderModel,
   Match,
-  MatchModel,
-  models,
   Player,
-  PlayerModel,
   Team,
-  TeamModel,
+  getClient,
+  ladderClient,
+  matchClient,
+  playerClient,
+  teamClient,
 } from "../../utils/amplify-helpers";
 import { deleteAllItems } from "../../utils/data-fetchers";
 import { addSampleEntities } from "../../utils/data-generators";
@@ -45,7 +45,7 @@ export function AdminTab() {
   async function getLadders() {
     try {
       setIsLoading((prev) => ({ ...prev, ladders: true }));
-      const { data, errors } = await LadderModel.list();
+      const { data, errors } = await ladderClient().list();
 
       if (errors) {
         console.error("Ladder list errors:", errors);
@@ -69,7 +69,7 @@ export function AdminTab() {
   async function getPlayers() {
     try {
       setIsLoading((prev) => ({ ...prev, players: true }));
-      const { data, errors } = await PlayerModel.list();
+      const { data, errors } = await playerClient().list();
 
       if (errors) {
         console.error("Player list errors:", errors);
@@ -101,7 +101,7 @@ export function AdminTab() {
   async function getTeams() {
     try {
       setIsLoading((prev) => ({ ...prev, teams: true }));
-      const { data, errors } = await TeamModel.list();
+      const { data, errors } = await teamClient().list();
 
       if (errors) {
         console.error("Team list errors:", errors);
@@ -129,7 +129,7 @@ export function AdminTab() {
   async function getMatches() {
     try {
       setIsLoading((prev) => ({ ...prev, matches: true }));
-      const { data, errors } = await MatchModel.list({
+      const { data, errors } = await matchClient().list({
         selectionSet: [
           "id",
           "ladderId",
@@ -298,7 +298,7 @@ export function AdminTab() {
         entity={player}
         dependencyKey={player.id}
         fetchRelation={async () => {
-          const result = await TeamModel.list({
+          const result = await teamClient().list({
             filter: { player1Id: { eq: player.id } },
             selectionSet: ["id", "name", "rating", "ladderId"],
           });
@@ -322,7 +322,7 @@ export function AdminTab() {
         entity={player}
         dependencyKey={player.id}
         fetchRelation={async () => {
-          const result = await TeamModel.list({
+          const result = await teamClient().list({
             filter: { player2Id: { eq: player.id } },
             selectionSet: ["id", "name", "rating", "ladderId"],
           });
@@ -349,12 +349,12 @@ export function AdminTab() {
           const results = await Promise.all([
             // If player1Id exists, fetch player1
             team.player1Id
-              ? PlayerModel.get({ id: team.player1Id })
+              ? playerClient().get({ id: team.player1Id })
               : Promise.resolve({ data: null, errors: null }),
 
             // If player2Id exists, fetch player2
             team.player2Id
-              ? PlayerModel.get({ id: team.player2Id })
+              ? playerClient().get({ id: team.player2Id })
               : Promise.resolve({ data: null, errors: null }),
           ]);
 
@@ -388,7 +388,7 @@ export function AdminTab() {
         entity={ladder}
         dependencyKey={ladder.id}
         fetchRelation={async () => {
-          const result = await TeamModel.list({
+          const result = await teamClient().list({
             filter: { ladderId: { eq: ladder.id } },
             selectionSet: ["id", "name"],
           });
@@ -420,7 +420,7 @@ export function AdminTab() {
             return null;
           }
 
-          const result = await LadderModel.get({
+          const result = await ladderClient().get({
             id: team.ladderId,
           });
 
@@ -447,7 +447,7 @@ export function AdminTab() {
             return null;
           }
 
-          const result = await TeamModel.get({
+          const result = await teamClient().get({
             id: teamId,
           });
 
@@ -474,7 +474,7 @@ export function AdminTab() {
             return null;
           }
 
-          const result = await LadderModel.get({
+          const result = await ladderClient().get({
             id: match.ladderId,
           });
 
@@ -501,7 +501,7 @@ export function AdminTab() {
             return null;
           }
 
-          const result = await TeamModel.get({
+          const result = await teamClient().get({
             id: match.winnerId,
           });
 
@@ -565,7 +565,7 @@ export function AdminTab() {
         >
           {ladders.map((ladder) => (
             <Table.Row key={ladder.id}>
-              <IdCell id={ladder.id}  />
+              <IdCell id={ladder.id} />
               <Table.Cell>{ladder.name}</Table.Cell>
               <Table.Cell>{ladder.description}</Table.Cell>
               <TeamsForLadderTableCell ladder={ladder} />
@@ -588,7 +588,7 @@ export function AdminTab() {
         >
           {players.map((player) => (
             <Table.Row key={player.id}>
-              <IdCell id={player.id}  />
+              <IdCell id={player.id} />
               <Table.Cell>
                 {player.givenName} {player.familyName}
               </Table.Cell>
@@ -638,7 +638,7 @@ export function AdminTab() {
         >
           {matches.map((match) => (
             <Table.Row key={match.id}>
-              <IdCell id={match.id}  />
+              <IdCell id={match.id} />
               <Table.Cell>
                 {new Date(match.createdAt).toLocaleDateString() +
                   " " +

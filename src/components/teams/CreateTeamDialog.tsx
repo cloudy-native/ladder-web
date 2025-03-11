@@ -9,7 +9,6 @@ import {
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { IoClose, IoSave } from "react-icons/io5";
-import { Player } from "../../utils/amplify-helpers";
 import { useTeamCreate } from "../../utils/hooks";
 import {
   DialogActionTrigger,
