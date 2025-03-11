@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Box,
   Button,
@@ -9,44 +11,47 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { generateClient } from "aws-amplify/data";
 import { useEffect, useState } from "react";
 import { IoBeaker, IoRefresh, IoTrash, IoTrophy } from "react-icons/io5";
-import type { Schema } from "../../../amplify/data/resource";
+import {
+  Ladder,
+  LadderModel,
+  Match,
+  MatchModel,
+  models,
+  Player,
+  PlayerModel,
+  Team,
+  TeamModel,
+} from "../../utils/amplify-helpers";
+import { deleteAllItems } from "../../utils/data-fetchers";
 import { addSampleEntities } from "../../utils/data-generators";
 import { nameFor } from "../../utils/random";
-import { deleteAllItems } from "../../utils/data-fetchers";
 import { EntityCard, IdCell, RelationTableCell } from "../admin";
-
-const client = generateClient<Schema>();
-
-type Ladder = Schema["Ladder"]["type"];
-type Player = Schema["Player"]["type"];
-type Team = Schema["Team"]["type"];
-type Match = Schema["Match"]["type"];
 
 export function AdminTab() {
   const [isLoading, setIsLoading] = useState({
     ladders: false,
+    matches: false,
     players: false,
     teams: false,
-    matches: false,
   });
 
   const [ladders, setLadders] = useState<Ladder[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [matches, setMatches] = useState<Match[]>([]);
 
   async function getLadders() {
     try {
       setIsLoading((prev) => ({ ...prev, ladders: true }));
-      const { data, errors } = await client.models.Ladder.list();
+      const { data, errors } = await LadderModel.list();
 
       if (errors) {
         console.error("Ladder list errors:", errors);
         console.warn("Continuing with available ladder data despite errors");
-        const validLadders = data?.filter((ladder) => ladder !== null) || [];
+        const validLadders =
+          data?.filter((ladder: any) => ladder !== null) || [];
         setLadders(validLadders);
         return;
       }
@@ -64,7 +69,7 @@ export function AdminTab() {
   async function getPlayers() {
     try {
       setIsLoading((prev) => ({ ...prev, players: true }));
-      const { data, errors } = await client.models.Player.list();
+      const { data, errors } = await PlayerModel.list();
 
       if (errors) {
         console.error("Player list errors:", errors);
@@ -96,7 +101,7 @@ export function AdminTab() {
   async function getTeams() {
     try {
       setIsLoading((prev) => ({ ...prev, teams: true }));
-      const { data, errors } = await client.models.Team.list();
+      const { data, errors } = await TeamModel.list();
 
       if (errors) {
         console.error("Team list errors:", errors);
@@ -124,8 +129,15 @@ export function AdminTab() {
   async function getMatches() {
     try {
       setIsLoading((prev) => ({ ...prev, matches: true }));
-      const { data, errors } = await client.models.Match.list({
-        selectionSet: ["id", "ladderId", "team1Id", "team2Id", "winnerId", "createdAt"]
+      const { data, errors } = await MatchModel.list({
+        selectionSet: [
+          "id",
+          "ladderId",
+          "team1Id",
+          "team2Id",
+          "winnerId",
+          "createdAt",
+        ],
       });
 
       if (errors) {
@@ -136,15 +148,16 @@ export function AdminTab() {
       if (data && Array.isArray(data)) {
         const validMatches = data.filter(
           (match) =>
-            match !== null && 
-            typeof match === "object" && 
-            match.id && 
+            match !== null &&
+            typeof match === "object" &&
+            match.id &&
             match.team1Id &&
             match.team2Id
         );
         // Sort by creation date, newest first
-        validMatches.sort((a, b) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        validMatches.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         setMatches(validMatches);
       } else {
@@ -158,7 +171,7 @@ export function AdminTab() {
       setIsLoading((prev) => ({ ...prev, matches: false }));
     }
   }
-  
+
   async function getAll() {
     const results = await Promise.allSettled([
       getLadders().catch((err) => {
@@ -176,7 +189,7 @@ export function AdminTab() {
       getMatches().catch((err) => {
         console.error("Error fetching matches:", err);
         setMatches([]);
-      })
+      }),
     ]);
 
     const successful = results.filter((r) => r.status === "fulfilled").length;
@@ -202,7 +215,7 @@ export function AdminTab() {
     refreshFunction,
   }: {
     items: T[];
-    modelName: keyof typeof client.models;
+    modelName: keyof typeof models;
     entityType: keyof typeof isLoading;
     refreshFunction: () => Promise<void>;
   }) {
@@ -249,7 +262,7 @@ export function AdminTab() {
       entityType: "matches",
       refreshFunction: getMatches,
     });
-    
+
   async function deleteAll() {
     setIsLoading({
       ladders: true,
@@ -285,43 +298,43 @@ export function AdminTab() {
         entity={player}
         dependencyKey={player.id}
         fetchRelation={async () => {
-          const result = await client.models.Team.list({
+          const result = await TeamModel.list({
             filter: { player1Id: { eq: player.id } },
-            selectionSet: ["id", "name", "rating", "ladderId"]
+            selectionSet: ["id", "name", "rating", "ladderId"],
           });
-          
+
           if (result.errors) {
             throw new Error("Error fetching team");
           }
-          
+
           return result.data?.[0] || null;
         }}
         renderContent={(team) => (
-          <Text>{team && 'name' in team ? team.name : "—"}</Text>
+          <Text>{team && "name" in team ? team.name : "—"}</Text>
         )}
       />
     );
   }
- 
+
   function TeamsForPlayer2TableCell({ player }: { player: Player }) {
     return (
       <RelationTableCell<Player, Team>
         entity={player}
         dependencyKey={player.id}
         fetchRelation={async () => {
-          const result = await client.models.Team.list({
+          const result = await TeamModel.list({
             filter: { player2Id: { eq: player.id } },
-            selectionSet: ["id", "name", "rating", "ladderId"]
+            selectionSet: ["id", "name", "rating", "ladderId"],
           });
-          
+
           if (result.errors) {
             throw new Error("Error fetching team");
           }
-          
+
           return result.data?.[0] || null;
         }}
         renderContent={(team) => (
-          <Text>{team && 'name' in team ? team.name : "—"}</Text>
+          <Text>{team && "name" in team ? team.name : "—"}</Text>
         )}
       />
     );
@@ -335,27 +348,27 @@ export function AdminTab() {
         fetchRelation={async () => {
           const results = await Promise.all([
             // If player1Id exists, fetch player1
-            team.player1Id 
-              ? client.models.Player.get({ id: team.player1Id })
+            team.player1Id
+              ? PlayerModel.get({ id: team.player1Id })
               : Promise.resolve({ data: null, errors: null }),
-            
+
             // If player2Id exists, fetch player2
-            team.player2Id 
-              ? client.models.Player.get({ id: team.player2Id })
-              : Promise.resolve({ data: null, errors: null })
+            team.player2Id
+              ? PlayerModel.get({ id: team.player2Id })
+              : Promise.resolve({ data: null, errors: null }),
           ]);
-          
+
           const [player1Result, player2Result] = results;
           const playerList: Player[] = [];
-          
+
           if (player1Result.data) {
             playerList.push(player1Result.data);
           }
-          
+
           if (player2Result.data) {
             playerList.push(player2Result.data);
           }
-          
+
           return playerList;
         }}
         renderContent={(players) => (
@@ -375,15 +388,15 @@ export function AdminTab() {
         entity={ladder}
         dependencyKey={ladder.id}
         fetchRelation={async () => {
-          const result = await client.models.Team.list({
+          const result = await TeamModel.list({
             filter: { ladderId: { eq: ladder.id } },
-            selectionSet: ["id", "name"]
+            selectionSet: ["id", "name"],
           });
-          
+
           if (result.errors) {
             throw new Error("Error fetching teams for ladder");
           }
-          
+
           return result.data || [];
         }}
         renderContent={(teams) => (
@@ -406,19 +419,19 @@ export function AdminTab() {
           if (!team.ladderId) {
             return null;
           }
-          
-          const result = await client.models.Ladder.get({
-            id: team.ladderId
+
+          const result = await LadderModel.get({
+            id: team.ladderId,
           });
-          
+
           if (result.errors) {
             throw new Error("Error fetching ladder for team");
           }
-          
+
           return result.data;
         }}
         renderContent={(ladder) => (
-          <Text>{ladder && 'name' in ladder ? ladder.name : "—"}</Text>
+          <Text>{ladder && "name" in ladder ? ladder.name : "—"}</Text>
         )}
       />
     );
@@ -433,19 +446,19 @@ export function AdminTab() {
           if (!teamId) {
             return null;
           }
-          
-          const result = await client.models.Team.get({
-            id: teamId
+
+          const result = await TeamModel.get({
+            id: teamId,
           });
-          
+
           if (result.errors) {
             throw new Error("Error fetching team");
           }
-          
+
           return result.data;
         }}
         renderContent={(team) => (
-          <Text>{team && 'name' in team ? team.name : "—"}</Text>
+          <Text>{team && "name" in team ? team.name : "—"}</Text>
         )}
       />
     );
@@ -460,19 +473,19 @@ export function AdminTab() {
           if (!match.ladderId) {
             return null;
           }
-          
-          const result = await client.models.Ladder.get({
-            id: match.ladderId
+
+          const result = await LadderModel.get({
+            id: match.ladderId,
           });
-          
+
           if (result.errors) {
             throw new Error("Error fetching ladder for match");
           }
-          
+
           return result.data;
         }}
         renderContent={(ladder) => (
-          <Text>{ladder && 'name' in ladder ? ladder.name : "—"}</Text>
+          <Text>{ladder && "name" in ladder ? ladder.name : "—"}</Text>
         )}
       />
     );
@@ -487,20 +500,20 @@ export function AdminTab() {
           if (!match.winnerId) {
             return null;
           }
-          
-          const result = await client.models.Team.get({
-            id: match.winnerId
+
+          const result = await TeamModel.get({
+            id: match.winnerId,
           });
-          
+
           if (result.errors) {
             throw new Error("Error fetching winner team");
           }
-          
+
           return result.data;
         }}
         renderContent={(team) => (
           <Flex align="center">
-            {team && 'name' in team ? (
+            {team && "name" in team ? (
               <>
                 <Icon as={IoTrophy} color="yellow.500" mr={2} />
                 <Text>{team.name}</Text>
@@ -547,12 +560,12 @@ export function AdminTab() {
             { key: "id", label: "ID", width: "60px" },
             { key: "name", label: "Name" },
             { key: "description", label: "Description" },
-            { key: "teams", label: "Teams" }
+            { key: "teams", label: "Teams" },
           ]}
         >
           {ladders.map((ladder) => (
             <Table.Row key={ladder.id}>
-              <IdCell id={ladder.id} entityType="ladder" />
+              <IdCell id={ladder.id}  />
               <Table.Cell>{ladder.name}</Table.Cell>
               <Table.Cell>{ladder.description}</Table.Cell>
               <TeamsForLadderTableCell ladder={ladder} />
@@ -570,12 +583,12 @@ export function AdminTab() {
             { key: "id", label: "ID", width: "60px" },
             { key: "name", label: "Name" },
             { key: "team1", label: "Team (Player 1)" },
-            { key: "team2", label: "Team (Player 2)" }
+            { key: "team2", label: "Team (Player 2)" },
           ]}
         >
           {players.map((player) => (
             <Table.Row key={player.id}>
-              <IdCell id={player.id} entityType="player" />
+              <IdCell id={player.id}  />
               <Table.Cell>
                 {player.givenName} {player.familyName}
               </Table.Cell>
@@ -595,12 +608,12 @@ export function AdminTab() {
             { key: "id", label: "ID", width: "60px" },
             { key: "name", label: "Name" },
             { key: "ladder", label: "Ladder" },
-            { key: "players", label: "Players" }
+            { key: "players", label: "Players" },
           ]}
         >
           {teams.map((team) => (
             <Table.Row key={team.id}>
-              <IdCell id={team.id} entityType="team" />
+              <IdCell id={team.id} />
               <Table.Cell>{team.name}</Table.Cell>
               <LadderForTeamTableCell team={team} />
               <PlayersForTeamTableCell team={team} />
@@ -620,14 +633,15 @@ export function AdminTab() {
             { key: "ladder", label: "Ladder" },
             { key: "team1", label: "Team 1" },
             { key: "team2", label: "Team 2" },
-            { key: "winner", label: "Winner" }
+            { key: "winner", label: "Winner" },
           ]}
         >
           {matches.map((match) => (
             <Table.Row key={match.id}>
-              <IdCell id={match.id} entityType="match" />
+              <IdCell id={match.id}  />
               <Table.Cell>
-                {new Date(match.createdAt).toLocaleDateString() + ' ' + 
+                {new Date(match.createdAt).toLocaleDateString() +
+                  " " +
                   new Date(match.createdAt).toLocaleTimeString()}
               </Table.Cell>
               <LadderForMatchTableCell match={match} />

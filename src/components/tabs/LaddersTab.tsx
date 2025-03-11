@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Alert,
   Box,
@@ -16,7 +18,14 @@ import {
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import { IoAddCircle, IoClose, IoRefresh, IoTrash } from "react-icons/io5";
-import type { Schema } from "../../../amplify/data/resource";
+import { Ladder, Player } from "../../utils/amplify-helpers";
+import {
+  useFilter,
+  useLadderCreate,
+  useLadderDelete,
+  useLadderList,
+  useTeamsForLadder,
+} from "../../utils/hooks";
 import {
   DialogActionTrigger,
   DialogBody,
@@ -28,17 +37,6 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Field } from "../ui/field";
-import { 
-  useLadderList, 
-  useLadderCreate, 
-  useLadderDelete, 
-  useTeamsForLadder, 
-  TeamWithPlayers, 
-  useFilter 
-} from "../../utils/hooks";
-
-type Ladder = Schema["Ladder"]["type"];
-type Player = Schema["Player"]["type"];
 
 // Component to display teams in a ladder as a table sorted by rating
 function TeamsDisplay({ ladder }: { ladder: Ladder }) {
@@ -99,26 +97,34 @@ export function LaddersTab() {
   const { ladders, loading, refreshLadders } = useLadderList();
   const { createLadder, isCreating, createError } = useLadderCreate();
   const { deleteLadder, deletingLadders, deleteError } = useLadderDelete();
-  
+
   // Filter hook
   const ladderFilter = useCallback((ladder: Ladder, searchText: string) => {
     // Check ladder name
     if (ladder.name.toLowerCase().includes(searchText)) return true;
-    
+
     // Check ladder description if it exists
-    if (ladder.description && ladder.description.toLowerCase().includes(searchText)) {
+    if (
+      ladder.description &&
+      ladder.description.toLowerCase().includes(searchText)
+    ) {
       return true;
     }
-    
+
     return false;
   }, []);
-  
-  const { filterText, setFilterText, filteredItems: filteredLadders, clearFilter } = useFilter(ladders, ladderFilter);
-  
+
+  const {
+    filterText,
+    setFilterText,
+    filteredItems: filteredLadders,
+    clearFilter,
+  } = useFilter(ladders, ladderFilter);
+
   // Form state
   const [ladderName, setLadderName] = useState("");
   const [ladderDescription, setLadderDescription] = useState("");
-  
+
   // Dialog state
   const addLadderDialog = useDialog();
   const deleteDialogRef = useDialog();
@@ -131,20 +137,20 @@ export function LaddersTab() {
       // Clear form after successful creation
       setLadderName("");
       setLadderDescription("");
-      
+
       // Refresh ladder list
       refreshLadders();
-      
+
       // Close dialog
       addLadderDialog.setOpen(false);
     }
   };
-  
+
   const confirmDeleteLadder = (ladder: Ladder) => {
     setLadderToDelete(ladder);
     deleteDialogRef.setOpen(true);
   };
-  
+
   const handleDeleteLadder = async () => {
     if (ladderToDelete) {
       const success = await deleteLadder(ladderToDelete.id);
@@ -154,7 +160,7 @@ export function LaddersTab() {
       deleteDialogRef.setOpen(false);
     }
   };
-  
+
   const refreshData = () => {
     refreshLadders();
     clearFilter();
@@ -216,7 +222,7 @@ export function LaddersTab() {
           </DialogContent>
         </DialogRootProvider>
       </HStack>
-      
+
       {/* Search input */}
       <Box mb={4}>
         <Flex gap={4} alignItems="center">
@@ -258,10 +264,7 @@ export function LaddersTab() {
             <DialogActionTrigger asChild>
               <Button>Cancel</Button>
             </DialogActionTrigger>
-            <Button
-              colorScheme="red"
-              onClick={handleDeleteLadder}
-            >
+            <Button colorScheme="red" onClick={handleDeleteLadder}>
               Delete
             </Button>
           </DialogFooter>
@@ -284,7 +287,9 @@ export function LaddersTab() {
         <Alert.Root status="info">
           <Alert.Indicator />
           <Alert.Title>No ladders match your search</Alert.Title>
-          <Alert.Description>Try a different search term or clear your filter.</Alert.Description>
+          <Alert.Description>
+            Try a different search term or clear your filter.
+          </Alert.Description>
         </Alert.Root>
       ) : (
         <VStack align="stretch">

@@ -1,11 +1,6 @@
-import { generateClient } from "aws-amplify/api";
-import { Schema } from "../../amplify/data/resource";
+"use client";
 
-const client = generateClient<Schema>();
-
-type Ladder = Schema["Ladder"]["type"];
-type Player = Schema["Player"]["type"];
-type Team = Schema["Team"]["type"];
+import { Player } from "./amplify-helpers";
 
 interface NameObject {
   givenName: string;
@@ -50,8 +45,8 @@ export function randomName(): NameObject {
   };
 }
 
-export function nameFor(player:Player) {
-  return `${player.givenName} ${player.familyName}`
+export function nameFor(player: Player) {
+  return `${player.givenName} ${player.familyName}`;
 }
 
 // Assume < max possible
@@ -61,12 +56,12 @@ export function uniqueRandomNames(count: number): NameObject[] {
   const usedCombinations = new Set<string>();
 
   while (result.length < count) {
-    const name = randomName()
-    const combinationKey = JSON.stringify(name)
-    
+    const name = randomName();
+    const combinationKey = JSON.stringify(name);
+
     if (!usedCombinations.has(combinationKey)) {
       usedCombinations.add(combinationKey);
-      
+
       result.push(name);
     }
   }

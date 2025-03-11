@@ -1,54 +1,59 @@
-# React + TypeScript + Vite
+# Ladder Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A platform for managing ladder competitions for racket sports, built with Next.js and AWS Amplify Gen2.
 
-Currently, two official plugins are available:
+## Getting Started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Install dependencies:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+yarn install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Start the development server:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+yarn dev
+```
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+## AWS Amplify Integration
+
+This project uses AWS Amplify Gen2 for authentication, data storage, and API functionality.
+
+### Local Development
+
+During development, the app connects to your Amplify backend in the cloud.
+
+### Authentication
+
+Authentication is handled through AWS Cognito, allowing users to sign up, sign in, and manage their accounts.
+
+### Data Models
+
+The application uses the following data models:
+- Ladder: Represents a competition ladder
+- Team: Represents a team in a ladder
+- Player: Represents an individual player
+- Match: Represents a match between two teams
+
+## Deployment
+
+To deploy to AWS Amplify:
+
+1. Install the Amplify CLI:
+
+```bash
+npm install -g @aws-amplify/cli
+```
+
+2. Push your Amplify backend:
+
+```bash
+yarn amplify push
+```
+
+3. Build the Next.js application:
+
+```bash
+yarn build
 ```

@@ -1,17 +1,23 @@
-import { Routes, Route } from "react-router-dom";
-import RootLayout from "./layouts/RootLayout";
-import Home from "./pages/Home";
-import About from "./pages/About";
+'use client'
 
-function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<RootLayout />}>
-        <Route index element={<Home />} />
-        <Route path="about" element={<About />} />
-      </Route>
-    </Routes>
-  );
+import { usePathname } from 'next/navigation'
+import { useEffect } from 'react'
+import Home from './pages/Home'
+import About from './pages/About'
+
+export default function App() {
+  const pathname = usePathname()
+
+  useEffect(() => {
+    // Handle any client-side initialization here
+  }, [])
+
+  // Handle routes
+  switch(pathname) {
+    case '/about':
+      return <About />
+    default:
+      // Default to Home for root and other unmatched routes
+      return <Home />
+  }
 }
-
-export default App;

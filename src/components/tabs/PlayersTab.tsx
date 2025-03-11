@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Alert,
   Box,
@@ -5,7 +7,6 @@ import {
   Card,
   DialogRootProvider,
   Flex,
-  Heading,
   HStack,
   Icon,
   Input,
@@ -14,13 +15,10 @@ import {
   Table,
   Text,
   useDialog,
-  VStack,
 } from "@chakra-ui/react";
-import { generateClient } from "aws-amplify/data";
 import { useEffect, useState } from "react";
-import { IoClose, IoPerson, IoPersonAdd, IoRefresh } from "react-icons/io5";
-import type { Schema } from "../../../amplify/data/resource";
-import { getCurrentPlayer } from "../../data";
+import { IoAddCircle, IoClose, IoRefresh } from "react-icons/io5";
+import { Player, PlayerModel, TeamModel } from "../../utils/amplify-helpers";
 import {
   DialogActionTrigger,
   DialogBody,
@@ -33,15 +31,7 @@ import {
 } from "../ui/dialog";
 import { Field } from "../ui/field";
 
-// Base player type from schema
-type Player = Schema["Player"]["type"];
-type Team = Schema["Team"]["type"];
-
-const client = generateClient<Schema>();
-
 export function PlayersTab() {
-  const [player, setPlayer] = useState<Player | null>(null);
-  const [teamName, setTeamName] = useState("");
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterText, setFilterText] = useState("");
@@ -59,22 +49,22 @@ export function PlayersTab() {
   // Function to filter players based on search text
   const filterPlayers = (players: Player[]) => {
     if (!filterText.trim()) return players;
-    
-    return players.filter(player => {
+
+    return players.filter((player) => {
       // Check player name
       const fullName = `${player.givenName} ${player.familyName}`.toLowerCase();
       if (fullName.includes(filterText.toLowerCase())) return true;
-      
+
       // Check player email
-      if (player.email.toLowerCase().includes(filterText.toLowerCase())) return true;
-      
+      if (player.email.toLowerCase().includes(filterText.toLowerCase()))
+        return true;
+
       return false;
     });
   };
 
   // Function to refresh data
   const refreshData = () => {
-    fetchPlayer();
     getAllPlayers();
     // Clear filter
     setFilterText("");
@@ -90,49 +80,11 @@ export function PlayersTab() {
     setCurrentPage(1);
   }, [filterText]);
 
-  async function fetchPlayer() {
-    try {
-      const currentPlayer = await getCurrentPlayer();
-
-      if (currentPlayer) {
-        try {
-          // Get teams where this player is player1
-          const player1TeamsResult = await client.models.Team.list({
-            filter: { player1Id: { eq: currentPlayer.id } },
-            selectionSet: ["id", "name"]
-          });
-          
-          // Get teams where this player is player2
-          const player2TeamsResult = await client.models.Team.list({
-            filter: { player2Id: { eq: currentPlayer.id } },
-            selectionSet: ["id", "name"]
-          });
-          
-          // Set team name from either player1 or player2 result
-          const team = player1TeamsResult.data?.[0] || player2TeamsResult.data?.[0];
-          
-          if (team) {
-            setTeamName(team.name || "—");
-          } else {
-            setTeamName("—");
-          }
-        } catch (teamError) {
-          console.error("Error fetching player's team:", teamError);
-          setTeamName("—");
-        }
-
-        setPlayer(currentPlayer);
-      }
-    } catch (error) {
-      console.error("Error fetching player:", error);
-    }
-  }
-
   async function getAllPlayers() {
     setLoading(true);
 
     try {
-      const { data: playerData, errors } = await client.models.Player.list();
+      const { data: playerData, errors } = await PlayerModel.list();
 
       if (errors) {
         console.error("Error fetching players:", errors);
@@ -205,13 +157,11 @@ export function PlayersTab() {
     setIsCreatingPlayer(true);
 
     try {
-      const { data: createdPlayer, errors } = await client.models.Player.create(
-        {
-          givenName: newPlayerGivenName.trim(),
-          familyName: newPlayerFamilyName.trim(),
-          email: newPlayerEmail.trim(),
-        }
-      );
+      const { data: createdPlayer, errors } = await PlayerModel.create({
+        givenName: newPlayerGivenName.trim(),
+        familyName: newPlayerFamilyName.trim(),
+        email: newPlayerEmail.trim(),
+      });
 
       if (errors) {
         console.error("Error creating player:", errors);
@@ -258,20 +208,21 @@ export function PlayersTab() {
       async function fetchTeam() {
         try {
           // Get teams where this player is player1
-          const player1TeamsResult = await client.models.Team.list({
+          const player1TeamsResult = await TeamModel.list({
             filter: { player1Id: { eq: player.id } },
-            selectionSet: ["id", "name"]
+            selectionSet: ["id", "name"],
           });
-          
+
           // Get teams where this player is player2
-          const player2TeamsResult = await client.models.Team.list({
+          const player2TeamsResult = await TeamModel.list({
             filter: { player2Id: { eq: player.id } },
-            selectionSet: ["id", "name"]
+            selectionSet: ["id", "name"],
           });
-          
+
           // Get team name from either player1 or player2 result
-          const team = player1TeamsResult.data?.[0] || player2TeamsResult.data?.[0];
-          
+          const team =
+            player1TeamsResult.data?.[0] || player2TeamsResult.data?.[0];
+
           if (team) {
             setTeamName(team.name || "Unknown Team");
           } else {
@@ -297,52 +248,8 @@ export function PlayersTab() {
 
   return (
     <Stack>
-      {/* Current Player Section */}
-      {player ? (
-        <Card.Root p={4} mb={6}>
-          <Card.Header>
-            <Heading size="md">Your Profile</Heading>
-          </Card.Header>
-          <Card.Body>
-            <HStack align="flex-start">
-              <Box bg="blue.100" p={3} borderRadius="lg">
-                <Icon as={IoPerson} boxSize={10} color="blue.500" />
-              </Box>
-              <VStack align="start">
-                <Text fontWeight="bold" fontSize="lg">
-                  {player.givenName} {player.familyName}
-                </Text>
-                <Text fontSize="md">{player.email}</Text>
-                <HStack>
-                  <Text fontWeight="medium" color="gray.700">
-                    Team:
-                  </Text>
-                  <Text
-                    fontWeight={teamName !== "—" ? "medium" : "normal"}
-                    color={teamName !== "—" ? "blue.500" : "gray.500"}
-                  >
-                    {teamName || "—"}
-                  </Text>
-                </HStack>
-              </VStack>
-            </HStack>
-          </Card.Body>
-        </Card.Root>
-      ) : (
-        <Alert.Root status="info" mb={6}>
-          <Alert.Indicator />
-          <Alert.Title>No profile found</Alert.Title>
-          <Alert.Description>
-            Create a new player profile below to get started.
-          </Alert.Description>
-        </Alert.Root>
-      )}
-
       {/* All Players Section */}
       <Box>
-        {/* <HStack justifyContent="space-between" mb={4}> */}
-        <Heading size="md" mb={4}>All Players</Heading>
-
         <HStack justifyContent="flex-end" mb={4}>
           <Button onClick={refreshData}>
             <Icon as={IoRefresh} mr={2} /> Refresh
@@ -350,7 +257,7 @@ export function PlayersTab() {
           <DialogRootProvider value={addPlayerDialog}>
             <DialogTrigger asChild>
               <Button>
-                <Icon as={IoPersonAdd} mr={2} /> Add Player
+                <Icon as={IoAddCircle} mr={2} /> Add Player
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -395,7 +302,7 @@ export function PlayersTab() {
               </DialogBody>
               <DialogFooter>
                 <DialogActionTrigger asChild>
-                  <Button >Cancel</Button>
+                  <Button>Cancel</Button>
                 </DialogActionTrigger>
                 <Button
                   onClick={createPlayer}
@@ -415,7 +322,7 @@ export function PlayersTab() {
             </DialogContent>
           </DialogRootProvider>
         </HStack>
-        
+
         {/* Search input */}
         <Box mb={4}>
           <Flex gap={4} alignItems="center">
@@ -453,11 +360,13 @@ export function PlayersTab() {
           <Alert.Root status="info">
             <Alert.Indicator />
             <Alert.Title>No players match your search</Alert.Title>
-            <Alert.Description>Try a different search term or clear your filter.</Alert.Description>
+            <Alert.Description>
+              Try a different search term or clear your filter.
+            </Alert.Description>
           </Alert.Root>
         ) : (
           <>
-            <Card.Root  mb={4}>
+            <Card.Root mb={4}>
               <Table.Root>
                 <Table.Header>
                   <Table.Row>
