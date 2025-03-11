@@ -61,6 +61,7 @@ export function PlayerDisplay({
     <HStack bg="gray.50" p={2} borderRadius="md" flex="1" minW="200px">
       <Avatar.Root size="xs">
         <Avatar.Fallback name={playerName} />
+        {player.avatar && <Avatar.Image src={player.avatar} />}
       </Avatar.Root>
       <Box>
         <Text fontSize="sm" fontWeight="medium">

@@ -59,8 +59,11 @@ export type Team = Schema["Team"]["type"];
 
 /**
  * Check if a value is a Promise
+ * @template T The type that the promise might resolve to
+ * @param value The value to check
+ * @returns A type predicate that narrows the type to Promise<T>
  */
-export function isPromise(value: any): boolean {
+export function isPromise<T>(value: unknown): value is Promise<T> {
   return value instanceof Promise;
 }
 

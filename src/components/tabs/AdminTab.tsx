@@ -208,6 +208,8 @@ export function AdminTab() {
     refreshData();
   }, []);
 
+  const models = getClient().models;
+
   async function deleteAllItemsWithLoading<T extends { id: string }>({
     items,
     modelName,
@@ -219,14 +221,22 @@ export function AdminTab() {
     entityType: keyof typeof isLoading;
     refreshFunction: () => Promise<void>;
   }) {
+    if (items.length === 0) {
+      console.log(`No ${String(modelName)}s to delete`);
+      return;
+    }
+    
     setIsLoading((prev) => ({ ...prev, [entityType]: true }));
 
     try {
+      console.log(`Deleting ${items.length} ${String(modelName)}s...`);
       await deleteAllItems({ items, modelName });
+      console.log(`Successfully deleted ${items.length} ${String(modelName)}s`);
     } catch (error) {
       console.error(`Error deleting ${String(modelName)}s:`, error);
     } finally {
       setIsLoading((prev) => ({ ...prev, [entityType]: false }));
+      // Refresh the data after deletion
       await refreshFunction();
     }
   }
@@ -272,14 +282,21 @@ export function AdminTab() {
     });
 
     try {
+      // Need to delete in the correct order to avoid foreign key constraints
+      // First delete matches, then teams, then players and ladders
+      await deleteAllMatches();
+      await deleteAllTeams();
+      
+      // These can be done in parallel
       await Promise.all([
-        deleteAllMatches(),
         deleteAllLadders(),
         deleteAllPlayers(),
-        deleteAllTeams(),
       ]);
 
       console.log("All entities successfully deleted");
+      
+      // Refresh data after deletion
+      await refreshData();
     } catch (error) {
       console.error("Error during bulk delete:", error);
     } finally {
@@ -640,9 +657,7 @@ export function AdminTab() {
             <Table.Row key={match.id}>
               <IdCell id={match.id} />
               <Table.Cell>
-                {new Date(match.createdAt).toLocaleDateString() +
-                  " " +
-                  new Date(match.createdAt).toLocaleTimeString()}
+               TBD
               </Table.Cell>
               <LadderForMatchTableCell match={match} />
               <TeamNameTableCell teamId={match.team1Id} />

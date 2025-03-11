@@ -7,14 +7,13 @@ import {
   Player,
   playerClient,
   Team,
+  teamClient,
 } from "../amplify-helpers";
 import {
   createLadder as createLadderApi,
   deleteLadder as deleteLadderApi,
   getLadders,
 } from "../data-fetchers";
-import { generateClient } from "aws-amplify/api";
-import { Schema } from "../../../amplify/data/resource";
 
 export function useLadderList() {
   const [ladders, setLadders] = useState<Ladder[]>([]);

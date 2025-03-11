@@ -39,7 +39,7 @@ export function RelationCell<T>({
       try {
         const result = stableFetchRelation();
 
-        if (isPromise(result)) {
+        if (isPromise<{ data?: T | null; errors?: any[] }>(result)) {
           const response = await result;
           if (!isMounted) return;
           
@@ -50,7 +50,7 @@ export function RelationCell<T>({
           }
         } else {
           if (!isMounted) return;
-          setData(undefined);
+          setData(result.data);
         }
       } catch (err) {
         if (!isMounted) return;
@@ -85,7 +85,7 @@ export function RelationCell<T>({
       try {
         const rendered = renderData(data);
         
-        if (rendered instanceof Promise) {
+        if (isPromise<React.ReactNode>(rendered)) {
           const result = await rendered;
           if (isMounted) {
             setRenderedData(result);
@@ -154,7 +154,7 @@ export function RelationData<T>({
       try {
         const result = stableFetchRelation();
 
-        if (isPromise(result)) {
+        if (isPromise<{ data?: T | null; errors?: any[] }>(result)) {
           const response = await result;
           if (!isMounted) return;
           
@@ -165,7 +165,7 @@ export function RelationData<T>({
           }
         } else {
           if (!isMounted) return;
-          setData(undefined);
+          setData(result.data);
         }
       } catch (err) {
         if (!isMounted) return;
@@ -200,7 +200,7 @@ export function RelationData<T>({
       try {
         const rendered = renderData(data);
         
-        if (rendered instanceof Promise) {
+        if (isPromise<React.ReactNode>(rendered)) {
           const result = await rendered;
           if (isMounted) {
             setRenderedData(result);

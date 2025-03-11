@@ -1,8 +1,7 @@
 "use client";
 
-// TODO: Use faker for everything
-//
 import { faker } from "@faker-js/faker";
+import * as changeCase from "change-case";
 import {
   Ladder,
   ladderClient,
@@ -14,147 +13,186 @@ import {
   teamClient,
 } from "./amplify-helpers";
 
-// =================== DATA DEFINITIONS ===================
+function ladderName() {
+  return changeCase.capitalCase(
+    `${faker.commerce.productAdjective()} ${faker.commerce.product()}`
+  );
+}
 
-// Racket sports-inspired ladder divisions
-const LADDER_DIVISIONS = [
-  {
-    name: "Pro Tour Elite",
-    description:
-      "The pinnacle of competitive racket sports - where champions are crowned",
-  },
-  {
-    name: "Advanced Division",
-    description:
-      "High-level play for experienced competitors with refined technique",
-  },
-  {
-    name: "Intermediate Power",
-    description: "Solid players who've mastered the fundamentals of the game",
-  },
-  {
-    name: "Challenger Circuit",
-    description:
-      "Developing players looking to test their skills against tougher competition",
-  },
-  {
-    name: "Foundation League",
-    description:
-      "Building consistent play with an emphasis on technique development",
-  },
-  {
-    name: "Recreational Plus",
-    description:
-      "Regular players with a competitive edge seeking organized matches",
-  },
-  {
-    name: "Social Starters",
-    description:
-      "Introduction to competitive play in a friendly, supportive environment",
-  },
-];
+function teamName() {
+  return changeCase.capitalCase(
+    `${faker.food.adjective()} ${faker.food.dish()}`
+  );
+}
 
-// Clever/funny racket sports team names
-const TEAM_NAMES = [
-  // Racket sports puns - general
-  "Net Profits",
-  "Strings Attached",
-  "Court Jesters",
-  "Smash Hit",
-  "Deuce & Associates",
-  "The Racket-eers",
-  "Serve-ivors",
-  "Lob City",
-  "Top Spinners",
-  "Return Policy",
-  "Just the Tip",
-  "No Strings Attached",
-  "Baseline Bandits",
-  "Volley Llamas",
-  "The Drop Shots",
-  "Alley-Oops",
-  "Slice & Dice",
-  "Grip It & Rip It",
-  "The Fault Finders",
-  "Sweet Spot",
-  "Tenacious Slice",
-  "The Overhead Smashers",
-  "Double Fault Coffee",
-  "Hit & Giggle",
-  "The Spin Doctors",
-  "BackSpin Bandits",
-  "Topspin Tyrants",
-  "Rally Monkeys",
+// =================== GENERIC ENTITY GENERATOR ===================
 
-  // Tennis references
-  "Grand Slammers",
-  "Advantage Point",
-  "Love-Forty Thieves",
-  "The Break Points",
-  "Deuce Bigalow",
-  "New Balls Please",
-  "Game, Set, Match",
-  "You Got Served",
-  "Federer Express",
-  "Nadal's Biceps",
-  "The Djokesters",
-  "Serena's Sirens",
-  "Wimble-Done",
-  "Court of Appeals",
-  "The Ballboys",
-  "Hawkeye High Five",
+/**
+ * Options for generating entities
+ */
+interface GenerateEntitiesOptions<T, CreateParamsType> {
+  /** The number of entities to generate */
+  count: number;
 
-  // Pickleball references
-  "Dill With It",
-  "The Pickleballers",
-  "Kosher Dills",
-  "Sweet Pickles",
-  "Dinking Donuts",
-  "Kitchen Sink",
-  "Zero-Zero-Twos",
-  "Picklenauts",
-  "Gherkin Jerks",
-  "In-A-Pickle",
-  "Dinkable Feast",
-  "No Dinking Way",
+  /** The name of the entity type (for logging) */
+  entityName: string;
 
-  // Squash references
-  "Squash Goals",
-  "Squash the Competition",
-  "Wall Bangers",
-  "Boast Masters",
-  "Corner Pocket",
-  "The Tin Men",
-  "Nick Pick",
-  "Squash Buckling Heroes",
+  /** Function that generates parameters for the create function */
+  generateParams: (index: number) => CreateParamsType;
 
-  // Racquetball references
-  "Blue Balls",
-  "Kill Shot Crew",
-  "Ceiling Service",
-  "Wall Stars",
-  "Off-The-Wall",
-  "Drive-By Shooters",
-  "Racquet Scientists",
-  "Ball Busters",
+  /** Function that creates a single entity */
+  createOne: (
+    params: CreateParamsType
+  ) => Promise<{ data?: T | null; errors?: any[] }>;
 
-  // Badminton references
-  "Shuttle Runners",
-  "Shuttlecocks",
-  "Feather Friends",
-  "The Clear Winners",
-  "Smash Bros",
-  "Birds of Play",
-  "Shuttleworth It",
-  "Cock A Hoop",
-];
+  /** Function to run after each entity is created (optional) */
+  onEntityCreated?: (entity: T, index: number) => Promise<void> | void;
+
+  /** How often to log progress (e.g. log every 10 items) */
+  logInterval?: number;
+
+  /** Whether to continue on error */
+  continueOnError?: boolean;
+}
+
+/**
+ * Generic function to generate multiple entities
+ */
+async function generateEntities<T, CreateParamsType>({
+  count,
+  entityName,
+  generateParams,
+  createOne,
+  onEntityCreated,
+  logInterval = 10,
+  continueOnError = true,
+}: GenerateEntitiesOptions<T, CreateParamsType>): Promise<T[]> {
+  console.log(`Generating ${count} ${entityName}s...`);
+  const entities: T[] = [];
+
+  try {
+    // Generate all entity parameters upfront
+    const allParams = Array.from({ length: count }, (_, i) =>
+      generateParams(i)
+    );
+
+    // Create all entities in batches of 10 (or other appropriate batch size)
+    const batchSize = 10;
+    const batches = Math.ceil(count / batchSize);
+
+    for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
+      const start = batchIndex * batchSize;
+      const end = Math.min(start + batchSize, count);
+
+      console.log(
+        `Processing batch ${batchIndex + 1}/${batches} (${start + 1}-${end})...`
+      );
+
+      // Create entities in this batch concurrently
+      const batchResults = await Promise.all(
+        allParams.slice(start, end).map(async (params, localIndex) => {
+          const i = start + localIndex;
+          try {
+            const { data, errors } = await createOne(params);
+
+            if (errors) {
+              console.error(`Error creating ${entityName} ${i + 1}:`, errors);
+              if (!continueOnError) {
+                throw new Error(`Failed to create ${entityName}`);
+              }
+              return null;
+            }
+
+            return data as T;
+          } catch (err) {
+            console.error(`Error creating ${entityName} ${i + 1}:`, err);
+            if (!continueOnError) throw err;
+            return null;
+          }
+        })
+      );
+
+      // Filter out nulls and add successful entities to the result array
+      const validEntities = batchResults.filter(Boolean) as T[];
+      entities.push(...validEntities);
+
+      // Process callbacks for entities if needed
+      if (onEntityCreated && validEntities.length > 0) {
+        await Promise.all(
+          validEntities.map((entity, localIndex) =>
+            onEntityCreated(entity, start + localIndex)
+          )
+        );
+      }
+
+      console.log(`Created ${entities.length}/${count} ${entityName}s`);
+    }
+
+    console.log(`Successfully created ${entities.length} ${entityName}s`);
+    return entities;
+  } catch (error) {
+    console.error(`Error generating ${entityName}s:`, error);
+    return entities; // Return any entities we managed to create
+  }
+}
+
+// =================== ENTITY CREATOR FACTORY ===================
+
+/**
+ * Options for creating a batch of entities
+ */
+interface EntityCreatorOptions<T, P, D = any> {
+  /** The type of entity being created (for logging) */
+  entityType: string;
+
+  /** Function to generate the entity */
+  generator: (count: number, dependencies?: D) => Promise<T[]>;
+
+  /** Default number of entities to create */
+  defaultCount: number;
+
+  /** Optional transformation to apply to the entities before returning */
+  transform?: (entities: T[]) => T[] | Promise<T[]>;
+}
+
+/**
+ * Creates a function that can generate a batch of entities
+ */
+function createEntityBatchCreator<T, P, D = any>({
+  entityType,
+  generator,
+  defaultCount,
+  transform,
+}: EntityCreatorOptions<T, P, D>) {
+  return async (
+    count: number = defaultCount,
+    dependencies?: D
+  ): Promise<T[]> => {
+    console.log(`Creating ${count} ${entityType}s...`);
+    try {
+      let entities = await generator(count, dependencies);
+
+      if (transform) {
+        entities = await transform(entities);
+      }
+
+      console.log(`Successfully created ${entities.length} ${entityType}s`);
+      return entities;
+    } catch (error) {
+      console.error(`Error creating ${entityType}s:`, error);
+      throw error;
+    }
+  };
+}
+
+// =================== DATA GENERATION CONFIGURATION ===================
 
 /**
  * Configuration for data generation
  */
 interface GeneratorConfig {
   numPlayers?: number; // Number of players to generate
-  numLadders?: number; // Number of ladders to create (max 7)
+  numLadders?: number; // Number of ladders to create
   numTeams?: number; // Number of teams to create
   singlePlayerTeamRate?: number; // Percentage of teams with only one player (0.0 to 1.0)
   numMatches?: number; // Number of matches to generate
@@ -166,10 +204,10 @@ interface GeneratorConfig {
  * Default configuration values
  */
 const DEFAULT_CONFIG: GeneratorConfig = {
-  numPlayers: 50,
-  numLadders: 5,
-  numTeams: 30,
-  numMatches: 40,
+  numPlayers: 20,
+  numLadders: 2,
+  numTeams: 8,
+  numMatches: 15,
   singlePlayerTeamRate: 0.2, // 20% of teams have only 1 player
   matchWinRate: 0.8, // 80% of matches have a recorded winner
   deleteExisting: true,
@@ -184,40 +222,76 @@ async function clearExistingData() {
   console.log("Clearing existing data...");
 
   try {
-    // First delete teams to avoid foreign key constraints
+    // First delete matches to avoid foreign key constraints
+    const { data: matches } = await matchClient().list();
+    if (matches && matches.length > 0) {
+      console.log(`Deleting ${matches.length} matches...`);
+      const batchSize = 10;
+      for (let i = 0; i < matches.length; i += batchSize) {
+        const batch = matches.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map((match) => matchClient().delete({ id: match.id }))
+        );
+        console.log(
+          `Deleted ${Math.min(i + batchSize, matches.length)}/${
+            matches.length
+          } matches`
+        );
+      }
+    }
+
+    // Delete teams
     const { data: teams } = await teamClient().list();
     if (teams && teams.length > 0) {
-      for (const team of teams) {
-        await teamClient().delete({ id: team.id });
+      console.log(`Deleting ${teams.length} teams...`);
+      const batchSize = 10;
+      for (let i = 0; i < teams.length; i += batchSize) {
+        const batch = teams.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map((team) => teamClient().delete({ id: team.id }))
+        );
+        console.log(
+          `Deleted ${Math.min(i + batchSize, teams.length)}/${
+            teams.length
+          } teams`
+        );
       }
-      console.log(`Deleted ${teams.length} teams`);
     }
 
     // Delete ladders
     const { data: ladders } = await ladderClient().list();
     if (ladders && ladders.length > 0) {
-      for (const ladder of ladders) {
-        await ladderClient().delete({ id: ladder.id });
+      console.log(`Deleting ${ladders.length} ladders...`);
+      const batchSize = 10;
+      for (let i = 0; i < ladders.length; i += batchSize) {
+        const batch = ladders.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map((ladder) => ladderClient().delete({ id: ladder.id }))
+        );
+        console.log(
+          `Deleted ${Math.min(i + batchSize, ladders.length)}/${
+            ladders.length
+          } ladders`
+        );
       }
-      console.log(`Deleted ${ladders.length} ladders`);
     }
 
     // Delete players
     const { data: players } = await playerClient().list();
     if (players && players.length > 0) {
-      for (const player of players) {
-        await playerClient().delete({ id: player.id });
+      console.log(`Deleting ${players.length} players...`);
+      const batchSize = 10;
+      for (let i = 0; i < players.length; i += batchSize) {
+        const batch = players.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map((player) => playerClient().delete({ id: player.id }))
+        );
+        console.log(
+          `Deleted ${Math.min(i + batchSize, players.length)}/${
+            players.length
+          } players`
+        );
       }
-      console.log(`Deleted ${players.length} players`);
-    }
-
-    // Delete matches
-    const { data: matches } = await matchClient().list();
-    if (matches && matches.length > 0) {
-      for (const match of matches) {
-        await matchClient().delete({ id: match.id });
-      }
-      console.log(`Deleted ${matches.length} matches`);
     }
 
     console.log("Database cleared successfully");
@@ -227,166 +301,154 @@ async function clearExistingData() {
   }
 }
 
-// Popular racket sports clubs for player affiliation
-const RACKET_CLUBS = [
-  "Westside Racket Club",
-  "River City Tennis Center",
-  "Pickleball Paradise",
-  "Smash & Dash Squash Club",
-  "Courtside Athletic Village",
-  "The Racket Factory",
-  "Grand Slam Club",
-  "Baseline Community Center",
-  "Ace Athletics",
-  "The Tennis Barn",
-  "Metro Racket Sports",
-  "Eagle Point Racquet Club",
-  "Downtown Indoor Courts",
-  "The Serve Bar & Grill",
-  "University Racket Complex",
-];
-
 /**
- * Generate random players with realistic names, emails, and racket sports flair
+ * Generate random players with realistic data
  */
 async function generatePlayers(count: number): Promise<Player[]> {
-  console.log(`Generating ${count} players...`);
-  const players: Player[] = [];
+  return generateEntities<
+    Player,
+    { givenName: string; familyName: string; email: string }
+  >({
+    count,
+    entityName: "player",
+    generateParams: () => {
+      const givenName = faker.person.firstName();
+      const familyName = faker.person.lastName();
+      const email = faker.internet
+        .email({ firstName: givenName, lastName: familyName })
+        .toLowerCase();
 
-  // Occasionally create "famous" players with recognizable names from racket sports
-  const racketSportStars = [
-    { givenName: "Roger", familyName: "Federer", email: "roger@grandslam.com" },
-    {
-      givenName: "Serena",
-      familyName: "Williams",
-      email: "serena@champions.net",
+      return { givenName, familyName, email };
     },
-    { givenName: "Rafael", familyName: "Nadal", email: "rafa@claycourt.com" },
-    { givenName: "Novak", familyName: "Djokovic", email: "nole@topspin.org" },
-    {
-      givenName: "Jahangir",
-      familyName: "Khan",
-      email: "khan@squashlegend.com",
-    },
-    { givenName: "Anna", familyName: "Nordqvist", email: "anna@paddel.se" },
-    { givenName: "Ben", familyName: "Johns", email: "ben@pickleballpro.org" },
-    {
-      givenName: "Kane",
-      familyName: "Waselenchuk",
-      email: "kane@racquetball.net",
-    },
-  ];
-
-  // Mix in the stars randomly with regular players
-  const starCount = Math.min(racketSportStars.length, Math.floor(count * 0.1)); // Use up to 10% stars
-  const usedStars: number[] = [];
-
-  try {
-    for (let i = 0; i < count; i++) {
-      // Decide if this should be a star player (if any left)
-      const createStar = usedStars.length < starCount && Math.random() < 0.5;
-
-      let playerInfo;
-
-      if (createStar) {
-        // Pick a random unused star
-        let starIndex;
-        do {
-          starIndex = Math.floor(Math.random() * racketSportStars.length);
-        } while (usedStars.includes(starIndex));
-
-        usedStars.push(starIndex);
-        playerInfo = racketSportStars[starIndex];
-      } else {
-        // Create a regular player
-        const givenName = faker.person.firstName();
-        const familyName = faker.person.lastName();
-        const email = faker.internet
-          .email({ firstName: givenName, lastName: familyName })
-          .toLowerCase();
-        playerInfo = { givenName, familyName, email };
-      }
-
-      // Randomly assign a club affiliation to some players
-      const hasClubAffiliation = Math.random() < 0.7; // 70% have a club
-      const clubIndex = Math.floor(Math.random() * RACKET_CLUBS.length);
-
-      // Create the player
-      const { data, errors } = await playerClient().create({
-        givenName: playerInfo.givenName,
-        familyName: playerInfo.familyName,
-        email: playerInfo.email,
-      });
-
-      if (errors) {
-        console.error(`Error creating player ${i + 1}:`, errors);
-        continue;
-      }
-
-      if (data) {
-        players.push(data);
-        if ((i + 1) % 10 === 0) {
-          console.log(`Created ${i + 1}/${count} players`);
-        }
-      }
-    }
-
-    console.log(`Successfully created ${players.length} players`);
-    return players;
-  } catch (error) {
-    console.error("Error generating players:", error);
-    return players; // Return any players we managed to create
-  }
+    createOne: (params) => playerClient().create(params),
+    logInterval: 10,
+  });
 }
 
 /**
- * Generate ladder divisions
+ * Generate teams and assign to ladders
  */
-async function generateLadders(count: number): Promise<Ladder[]> {
-  console.log(`Generating ${count} ladders...`);
-  const ladders: Ladder[] = [];
+async function generateTeams(
+  count: number,
+  ladders: Ladder[],
+  players: Player[],
+  singlePlayerRate: number
+): Promise<Team[]> {
+  console.log(`Generating ${count} teams...`);
+  const teams: Team[] = [];
 
-  // Limit count to available divisions
-  const actualCount = Math.min(count, LADDER_DIVISIONS.length);
+  // Make a copy of players that we can shuffle and assign
+  const availablePlayers = [...players];
+
+  // Shuffle the available players
+  for (let i = availablePlayers.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [availablePlayers[i], availablePlayers[j]] = [
+      availablePlayers[j],
+      availablePlayers[i],
+    ];
+  }
 
   try {
-    for (let i = 0; i < actualCount; i++) {
-      const division = LADDER_DIVISIONS[i];
+    // Prepare team creation parameters
+    const teamParams = Array.from({ length: count }, () => {
+      // Randomly assign a ladder (or no ladder for some teams)
+      const assignLadder = Math.random() < 0.85; // 85% of teams are in a ladder
+      const ladderId =
+        assignLadder && ladders.length > 0
+          ? ladders[Math.floor(Math.random() * ladders.length)].id
+          : undefined;
 
-      const { data, errors } = await ladderClient().create({
-        name: division.name,
-        description: division.description,
-      });
+      // Generate a base rating between 1000 and 1600
+      const rating = faker.number.int({ min: 1000, max: 1600 });
 
-      if (errors) {
-        console.error(`Error creating ladder ${i + 1}:`, errors);
-        continue;
-      }
+      return {
+        name: teamName(),
+        rating,
+        ladderId,
+      };
+    });
 
-      if (data) {
-        ladders.push(data);
-        console.log(`Created ladder: ${division.name}`);
-      }
+    // Create teams in batches
+    const batchSize = 10;
+    const batches = Math.ceil(count / batchSize);
+
+    for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
+      const start = batchIndex * batchSize;
+      const end = Math.min(start + batchSize, count);
+      const batchParams = teamParams.slice(start, end);
+
+      console.log(
+        `Creating teams batch ${batchIndex + 1}/${batches} (${
+          start + 1
+        }-${end})...`
+      );
+
+      // Create teams in parallel
+      const createdTeamsResults = await Promise.all(
+        batchParams.map((params) => teamClient().create(params))
+      );
+
+      // Process created teams
+      const createdTeams = createdTeamsResults
+        .map((result) => result.data)
+        .filter(Boolean) as Team[];
+
+      // Now assign players to teams
+      const teamsWithPlayersResults = await Promise.all(
+        createdTeams.map((team) => {
+          // Should this team have one or two players?
+          const isSinglePlayerTeam = Math.random() < singlePlayerRate;
+
+          // Check if we have enough players left
+          if (availablePlayers.length === 0) {
+            console.log(`Created team without players (ran out): ${team.name}`);
+            return team;
+          }
+
+          // Assign player 1
+          const player1 = availablePlayers.pop()!;
+
+          // Assign player 2 if needed and available
+          let player2 = null;
+          if (!isSinglePlayerTeam && availablePlayers.length > 0) {
+            player2 = availablePlayers.pop()!;
+          }
+
+          // Update team with players
+          return teamClient()
+            .update({
+              id: team.id,
+              player1Id: player1.id,
+              player2Id: player2?.id,
+            })
+            .then((result) => {
+              if (result.errors) {
+                console.error(
+                  `Error updating team ${team.name} with players:`,
+                  result.errors
+                );
+                return team; // Return original team if update fails
+              }
+              return result.data;
+            });
+        })
+      );
+
+      // Add the updated teams to the result array
+      const validTeams = teamsWithPlayersResults.filter(Boolean) as Team[];
+      teams.push(...validTeams);
+
+      console.log(`Created ${teams.length}/${count} teams`);
     }
 
-    console.log(`Successfully created ${ladders.length} ladders`);
-    return ladders;
+    console.log(`Successfully created ${teams.length} teams`);
+    return teams;
   } catch (error) {
-    console.error("Error generating ladders:", error);
-    return ladders; // Return any ladders we managed to create
+    console.error("Error generating teams:", error);
+    return teams; // Return any teams we managed to create
   }
 }
-
-// Define racket sport types for categorization
-const RACKET_SPORTS = [
-  "Tennis",
-  "Pickleball",
-  "Squash",
-  "Racquetball",
-  "Badminton",
-  "Platform Tennis",
-  "Padel",
-];
 
 /**
  * Generate matches between teams in ladders
@@ -410,15 +472,6 @@ async function generateMatches(
     }
   }
 
-  // Calculate dates for matches (last 30 days)
-  const now = new Date();
-  const dates: Date[] = [];
-  for (let i = 0; i < 30; i++) {
-    const date = new Date();
-    date.setDate(now.getDate() - i);
-    dates.push(date);
-  }
-
   try {
     // For each ladder that has at least 2 teams
     for (const ladderId in teamsByLadder) {
@@ -435,7 +488,8 @@ async function generateMatches(
         Math.floor(ladderTeams.length * 3) // ~3 matches per team on average
       );
 
-      for (let i = 0; i < ladderMatchCount; i++) {
+      // Generate all match parameters for this ladder
+      const matchParams = Array.from({ length: ladderMatchCount }, () => {
         // Pick two random teams from this ladder
         let team1Index = Math.floor(Math.random() * ladderTeams.length);
         let team2Index;
@@ -450,7 +504,6 @@ async function generateMatches(
         const hasWinner = Math.random() < winRate;
 
         // If there's a winner, determine who won based on rating
-        // Higher rated teams have a better chance of winning, but upsets can happen
         let winnerId = undefined;
         if (hasWinner) {
           const team1Rating = team1.rating || 1200;
@@ -464,38 +517,48 @@ async function generateMatches(
           winnerId = Math.random() < team1WinProbability ? team1.id : team2.id;
         }
 
-        // Use a random date from the last 30 days
-        const createdAt =
-          dates[Math.floor(Math.random() * dates.length)].toISOString();
+        // Create match date within the last 30 days
+        const matchDate = faker.date.recent({ days: 30 });
 
-        // Create the match
-        const { data, errors } = await matchClient().create({
+        return {
           ladderId,
           team1Id: team1.id,
           team2Id: team2.id,
           winnerId,
-        });
+          date: matchDate.toISOString(),
+        };
+      });
 
-        if (errors) {
-          console.error(`Error creating match ${i + 1}:`, errors);
-          continue;
-        }
+      // Create matches in batches
+      const batchSize = 10;
+      const batches = Math.ceil(ladderMatchCount / batchSize);
 
-        if (data) {
-          matches.push(data);
+      for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
+        const start = batchIndex * batchSize;
+        const end = Math.min(start + batchSize, ladderMatchCount);
+        const batchParams = matchParams.slice(start, end);
 
-          const winnerText = winnerId
-            ? `Winner: ${winnerId === team1.id ? team1.name : team2.name}`
-            : "No winner recorded";
+        console.log(
+          `Creating matches batch ${
+            batchIndex + 1
+          }/${batches} for ladder ${ladderId} (${start + 1}-${end})...`
+        );
 
-          if ((i + 1) % 5 === 0 || i === ladderMatchCount - 1) {
-            console.log(
-              `Created ${
-                i + 1
-              }/${ladderMatchCount} matches for ladder ${ladderId}`
-            );
-          }
-        }
+        // Create matches in parallel
+        const createdMatchesResults = await Promise.all(
+          batchParams.map((params) => matchClient().create(params))
+        );
+
+        // Process created matches
+        const createdMatches = createdMatchesResults
+          .map((result) => result.data)
+          .filter(Boolean) as Match[];
+
+        matches.push(...createdMatches);
+
+        console.log(
+          `Created ${matches.length} matches so far (${createdMatches.length} in this batch)`
+        );
       }
     }
 
@@ -508,139 +571,22 @@ async function generateMatches(
 }
 
 /**
- * Generate teams with funny racket sports names and assign to ladders
+ * Generic function to generate an entity of a specific type
  */
-async function generateTeams(
-  count: number,
-  ladders: Ladder[],
-  players: Player[],
-  singlePlayerRate: number
-): Promise<Team[]> {
-  console.log(`Generating ${count} teams...`);
-  const teams: Team[] = [];
-
-  // Make a copy of players that we can shuffle and assign
-  const availablePlayers = [...players];
-
-  // Shuffle the available players
-  for (let i = availablePlayers.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [availablePlayers[i], availablePlayers[j]] = [
-      availablePlayers[j],
-      availablePlayers[i],
-    ];
-  }
-
-  // Shuffle and limit team names if needed
-  const shuffledTeamNames = [...TEAM_NAMES]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, count);
-
-  try {
-    for (let i = 0; i < Math.min(count, shuffledTeamNames.length); i++) {
-      // Randomly assign a ladder (or no ladder for some teams)
-      const assignLadder = Math.random() < 0.85; // 85% of teams are in a ladder
-      const ladderId = assignLadder
-        ? ladders[Math.floor(Math.random() * ladders.length)].id
-        : undefined;
-
-      // Generate a rating between 1000 and 1800 with a bell curve distribution
-      const baseRating = 1400;
-      const deviation = 200;
-      // Sum 3 random numbers for a more bell-curve like distribution
-      const rating =
-        baseRating +
-        Math.floor(
-          (Math.random() + Math.random() + Math.random() - 1.5) * deviation
-        );
-
-      // Assign a racket sport type to this team
-      const sportType =
-        RACKET_SPORTS[Math.floor(Math.random() * RACKET_SPORTS.length)];
-
-      // Add some flavor text based on the sportType
-      let namePrefix = "";
-
-      // 30% chance to add a sport type prefix to the name
-      if (Math.random() < 0.3) {
-        namePrefix = `[${sportType}] `;
-      }
-
-      // Create team
-      const { data, errors } = await teamClient().create({
-        name: namePrefix + shuffledTeamNames[i],
-        rating,
-        ladderId,
-      });
-
-      if (errors) {
-        console.error(`Error creating team ${i + 1}:`, errors);
-        continue;
-      }
-
-      if (data) {
-        // Should this team have one or two players?
-        // For racquetball and squash, increase the likelihood of single player
-        const sportBasedSingleRate =
-          sportType === "Racquetball" || sportType === "Squash"
-            ? Math.max(0.5, singlePlayerRate) // at least 50% for these sports
-            : singlePlayerRate;
-
-        const isSinglePlayerTeam = Math.random() < sportBasedSingleRate;
-
-        // Check if we have enough players left
-        if (availablePlayers.length === 0) {
-          console.log(`Created team without players (ran out): ${data.name}`);
-          teams.push(data);
-          continue;
-        }
-
-        // Assign player 1
-        const player1 = availablePlayers.pop()!;
-
-        // Assign player 2 if needed and available
-        let player2 = null;
-        if (!isSinglePlayerTeam && availablePlayers.length > 0) {
-          player2 = availablePlayers.pop()!;
-        }
-
-        // Update team with players
-        const { data: updatedTeam, errors: updateErrors } =
-          await teamClient().update({
-            id: data.id,
-            player1Id: player1.id,
-            player2Id: player2?.id,
-          });
-
-        if (updateErrors) {
-          console.error(
-            `Error updating team ${data.name} with players:`,
-            updateErrors
-          );
-        }
-
-        if (updatedTeam) {
-          teams.push(updatedTeam);
-          const ladderName = ladderId
-            ? ladders.find((l) => l.id === ladderId)?.name
-            : "None";
-          const playerInfo = player2
-            ? `${player1.givenName} ${player1.familyName} and ${player2.givenName} ${player2.familyName}`
-            : `${player1.givenName} ${player1.familyName} (solo)`;
-
-          console.log(
-            `Created ${sportType} team: ${updatedTeam.name} - Ladder: ${ladderName} - Players: ${playerInfo}`
-          );
-        }
-      }
-    }
-
-    console.log(`Successfully created ${teams.length} teams`);
-    return teams;
-  } catch (error) {
-    console.error("Error generating teams:", error);
-    return teams; // Return any teams we managed to create
-  }
+export function createEntityGenerator<T, P>(
+  entityType: string,
+  client: any,
+  paramGenerator: () => P
+): (count: number) => Promise<T[]> {
+  return (count: number) => {
+    return generateEntities<T, P>({
+      count,
+      entityName: entityType,
+      generateParams: () => paramGenerator(),
+      createOne: (params) => client.create(params),
+      logInterval: entityType === "ladder" ? 1 : 5,
+    });
+  };
 }
 
 /**
@@ -650,10 +596,7 @@ export async function addSampleEntities(config: Partial<GeneratorConfig> = {}) {
   // Merge provided config with defaults
   const finalConfig: GeneratorConfig = { ...DEFAULT_CONFIG, ...config };
 
-  console.log("=".repeat(50));
-  console.log("GENERATING SAMPLE DATA");
-  console.log("Configuration:", finalConfig);
-  console.log("=".repeat(50));
+  console.log("Sample data configuration:", finalConfig);
 
   try {
     // Clear existing data if requested
@@ -661,9 +604,35 @@ export async function addSampleEntities(config: Partial<GeneratorConfig> = {}) {
       await clearExistingData();
     }
 
+    // Create reusable entity generators
+    const createPlayers = createEntityGenerator<
+      Player,
+      { givenName: string; familyName: string; email: string; avatar: string }
+    >("player", playerClient(), () => {
+      const givenName = faker.person.firstName();
+      const familyName = faker.person.lastName();
+
+      return {
+        givenName,
+        familyName,
+        email: faker.internet
+          .email({ firstName: givenName, lastName: familyName })
+          .toLowerCase(),
+        avatar: faker.image.avatar(),
+      };
+    });
+
+    const createLadders = createEntityGenerator<
+      Ladder,
+      { name: string; description: string }
+    >("ladder", ladderClient(), () => ({
+      name: ladderName(),
+      description: faker.lorem.sentence(20),
+    }));
+
     // Generate data in order (players → ladders → teams → matches)
-    const players = await generatePlayers(finalConfig.numPlayers!);
-    const ladders = await generateLadders(finalConfig.numLadders!);
+    const players = await createPlayers(finalConfig.numPlayers!);
+    const ladders = await createLadders(finalConfig.numLadders!);
     const teams = await generateTeams(
       finalConfig.numTeams!,
       ladders,
@@ -689,9 +658,7 @@ export async function addSampleEntities(config: Partial<GeneratorConfig> = {}) {
     console.error("Error generating sample data:", error);
     throw new Error("Failed to generate sample data");
   } finally {
-    console.log("=".repeat(50));
-    console.log("SAMPLE DATA GENERATION COMPLETE");
-    console.log("=".repeat(50));
+    console.log("Sample data loaded");
   }
 }
 
@@ -707,4 +674,51 @@ export async function addQuickSampleData() {
     singlePlayerTeamRate: 0.3,
     matchWinRate: 0.75,
   });
+}
+
+/**
+ * Create a single entity of a specific type with the given parameters
+ */
+export async function createEntity<T, P extends Record<string, any>>(
+  entityType: "player" | "ladder" | "team" | "match",
+  params: P
+): Promise<T | null> {
+  try {
+    console.log(`Creating ${entityType} with params:`, params);
+
+    let client;
+    switch (entityType) {
+      case "player":
+        client = playerClient();
+        break;
+      case "ladder":
+        client = ladderClient();
+        break;
+      case "team":
+        client = teamClient();
+        break;
+      case "match":
+        client = matchClient();
+        break;
+      default:
+        throw new Error(`Unknown entity type: ${entityType}`);
+    }
+
+    const { data, errors } = await client.create(params);
+
+    if (errors) {
+      console.error(`Error creating ${entityType}:`, errors);
+      throw new Error(`Failed to create ${entityType}`);
+    }
+
+    if (data) {
+      console.log(`Successfully created ${entityType}:`, data);
+      return data as T;
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`Error creating ${entityType}:`, error);
+    throw error;
+  }
 }

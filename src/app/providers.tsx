@@ -1,11 +1,10 @@
 "use client";
 
-import { ThemeProvider } from "@aws-amplify/ui-react";
-import "@aws-amplify/ui-react/styles.css";
 import { ChakraProvider } from "@chakra-ui/react";
 import { Amplify } from "aws-amplify";
 import { StrictMode, useEffect, useState } from "react";
 import config from "../../amplify_outputs.json";
+import { AuthProvider } from "../components/auth";
 import { Layout } from "../components/ui/layout/Layout";
 import { theme } from "../theme/theme";
 
@@ -16,9 +15,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // Configure Amplify on the client side only
     if (typeof window !== "undefined") {
       Amplify.configure(config);
-
-      // Initialize auth listeners for user management
-      // authListeners();
       setIsClient(true);
     }
   }, []);
@@ -38,9 +34,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <StrictMode>
       <ChakraProvider value={theme}>
-        <ThemeProvider>
+        <AuthProvider>
           <Layout>{children}</Layout>
-        </ThemeProvider>
+        </AuthProvider>
       </ChakraProvider>
     </StrictMode>
   );

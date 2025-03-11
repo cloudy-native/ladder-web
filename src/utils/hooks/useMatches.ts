@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  getClient,
   Ladder,
   ladderClient,
   Match,
   matchClient,
   Team,
-  teamClient,
+  teamClient
 } from "../amplify-helpers";
 
 export interface MatchWithDetails extends Match {

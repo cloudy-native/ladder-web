@@ -18,7 +18,7 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { IoAddCircle, IoClose, IoRefresh } from "react-icons/io5";
-import { Player, playerClient } from "../../utils/amplify-helpers";
+import { Player, playerClient, teamClient } from "../../utils/amplify-helpers";
 import {
   DialogActionTrigger,
   DialogBody,
@@ -208,13 +208,13 @@ export function PlayersTab() {
       async function fetchTeam() {
         try {
           // Get teams where this player is player1
-          const player1TeamsResult = await TeamModel.list({
+          const player1TeamsResult = await teamClient().list({
             filter: { player1Id: { eq: player.id } },
             selectionSet: ["id", "name"],
           });
 
           // Get teams where this player is player2
-          const player2TeamsResult = await TeamModel.list({
+          const player2TeamsResult = await teamClient().list({
             filter: { player2Id: { eq: player.id } },
             selectionSet: ["id", "name"],
           });

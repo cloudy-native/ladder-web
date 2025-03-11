@@ -15,5 +15,8 @@ export const auth = defineAuth({
     familyName: {
       required: true,
     },
+    phoneNumber: {
+      required: false,
+    },
   },
 });
