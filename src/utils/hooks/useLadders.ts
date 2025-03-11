@@ -1,11 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../amplify/data/resource';
-import { getLadders, deleteLadder as deleteLadderApi, createLadder as createLadderApi } from '../data-fetchers';
+"use client";
 
-const client = generateClient<Schema>();
-
-type Ladder = Schema["Ladder"]["type"];
+import { useCallback, useEffect, useState } from "react";
+import {
+  Ladder,
+  ladderClient,
+  Player,
+  playerClient,
+  Team,
+} from "../amplify-helpers";
+import {
+  createLadder as createLadderApi,
+  deleteLadder as deleteLadderApi,
+  getLadders,
+} from "../data-fetchers";
+import { generateClient } from "aws-amplify/api";
+import { Schema } from "../../../amplify/data/resource";
 
 export function useLadderList() {
   const [ladders, setLadders] = useState<Ladder[]>([]);
@@ -40,7 +49,7 @@ export function useLadderList() {
     ladders,
     loading,
     error,
-    refreshLadders
+    refreshLadders,
   };
 }
 
@@ -55,7 +64,7 @@ export function useLadderSelect() {
     setError(null);
 
     try {
-      const { data: ladderData, errors } = await client.models.Ladder.list();
+      const { data: ladderData, errors } = await ladderClient().list();
 
       if (errors) {
         console.error("Error fetching ladders:", errors);
@@ -95,15 +104,21 @@ export function useLadderSelect() {
   }, [fetchLadders]);
 
   // Helper functions for ladder operations
-  const isTeamInLadder = useCallback((teamId: string, ladderId: string, teams: any[]) => {
-    const team = teams.find((team) => team.id === teamId);
-    return team?.ladderId === ladderId;
-  }, []);
+  const isTeamInLadder = useCallback(
+    (teamId: string, ladderId: string, teams: any[]) => {
+      const team = teams.find((team) => team.id === teamId);
+      return team?.ladderId === ladderId;
+    },
+    []
+  );
 
-  const getLadderName = useCallback((ladderId: string) => {
-    const ladder = ladders.find((ladder) => ladder.id === ladderId);
-    return ladder ? ladder.name : "Unknown Ladder";
-  }, [ladders]);
+  const getLadderName = useCallback(
+    (ladderId: string) => {
+      const ladder = ladders.find((ladder) => ladder.id === ladderId);
+      return ladder ? ladder.name : "Unknown Ladder";
+    },
+    [ladders]
+  );
 
   return {
     ladders,
@@ -113,7 +128,7 @@ export function useLadderSelect() {
     setSelectedLadder,
     refreshLadders: fetchLadders,
     isTeamInLadder,
-    getLadderName
+    getLadderName,
   };
 }
 
@@ -121,38 +136,43 @@ export function useLadderCreate() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const createLadder = useCallback(async (name: string, description: string = "") => {
-    setCreateError(null);
+  const createLadder = useCallback(
+    async (name: string, description: string = "") => {
+      setCreateError(null);
 
-    // Validate input
-    if (!name.trim()) {
-      setCreateError("Ladder name is required");
-      return null;
-    }
+      // Validate input
+      if (!name.trim()) {
+        setCreateError("Ladder name is required");
+        return null;
+      }
 
-    setIsCreating(true);
+      setIsCreating(true);
 
-    try {
-      const createdLadder = await createLadderApi(name, description);
-      return createdLadder;
-    } catch (error) {
-      console.error("Error creating ladder:", error);
-      setCreateError("Failed to create ladder. Please try again.");
-      return null;
-    } finally {
-      setIsCreating(false);
-    }
-  }, []);
+      try {
+        const createdLadder = await createLadderApi(name, description);
+        return createdLadder;
+      } catch (error) {
+        console.error("Error creating ladder:", error);
+        setCreateError("Failed to create ladder. Please try again.");
+        return null;
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    []
+  );
 
   return {
     createLadder,
     isCreating,
-    createError
+    createError,
   };
 }
 
 export function useLadderDelete() {
-  const [deletingLadders, setDeletingLadders] = useState<Record<string, boolean>>({});
+  const [deletingLadders, setDeletingLadders] = useState<
+    Record<string, boolean>
+  >({});
   const [deleteError, setDeleteError] = useState<Record<string, string>>({});
 
   const deleteLadder = useCallback(async (id: string) => {
@@ -169,7 +189,7 @@ export function useLadderDelete() {
       console.error("Error deleting ladder:", error);
       setDeleteError((prev) => ({
         ...prev,
-        [id]: "Failed to delete ladder. It may have teams or matches associated with it."
+        [id]: "Failed to delete ladder. It may have teams or matches associated with it.",
       }));
       return false;
     } finally {
@@ -181,20 +201,18 @@ export function useLadderDelete() {
   return {
     deleteLadder,
     deletingLadders,
-    deleteError
+    deleteError,
   };
 }
-
-// Type definitions for team with players
-type Team = Schema["Team"]["type"];
-type Player = Schema["Player"]["type"];
 
 export interface TeamWithPlayers extends Team {
   playersList?: Player[];
 }
 
 export function useTeamsForLadder(ladderId: string) {
-  const [teamsWithPlayers, setTeamsWithPlayers] = useState<TeamWithPlayers[]>([]);
+  const [teamsWithPlayers, setTeamsWithPlayers] = useState<TeamWithPlayers[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -204,9 +222,16 @@ export function useTeamsForLadder(ladderId: string) {
 
     try {
       // Fetch teams for this ladder using filter
-      const teamsResult = await client.models.Team.list({
+      const teamsResult = await teamClient().list({
         filter: { ladderId: { eq: ladderId } },
-        selectionSet: ["id", "name", "rating", "ladderId", "player1Id", "player2Id"]
+        selectionSet: [
+          "id",
+          "name",
+          "rating",
+          "ladderId",
+          "player1Id",
+          "player2Id",
+        ],
       });
 
       if (teamsResult.errors) {
@@ -216,7 +241,7 @@ export function useTeamsForLadder(ladderId: string) {
       }
 
       const teams = teamsResult.data || [];
-      
+
       // If we have teams, fetch the players for each one
       if (teams.length > 0) {
         let teamsData: TeamWithPlayers[] = [];
@@ -224,24 +249,24 @@ export function useTeamsForLadder(ladderId: string) {
         // Create an array of promises to fetch players for all teams in parallel
         const teamsWithPlayersPromises = teams.map(async (team) => {
           if (!team || !team.id) return null;
-          
+
           try {
             const players: Player[] = [];
-            
+
             // Fetch player1 if it exists
             if (team.player1Id) {
-              const player1Result = await client.models.Player.get({
-                id: team.player1Id
+              const player1Result = await playerClient().get({
+                id: team.player1Id,
               });
               if (player1Result.data) {
                 players.push(player1Result.data);
               }
             }
-            
+
             // Fetch player2 if it exists
             if (team.player2Id) {
-              const player2Result = await client.models.Player.get({
-                id: team.player2Id
+              const player2Result = await playerClient().get({
+                id: team.player2Id,
               });
               if (player2Result.data) {
                 players.push(player2Result.data);
@@ -261,10 +286,10 @@ export function useTeamsForLadder(ladderId: string) {
 
         // Wait for all team fetches to complete
         const results = await Promise.all(teamsWithPlayersPromises);
-        
+
         // Filter out any null results from errors
         teamsData = results.filter(Boolean) as TeamWithPlayers[];
-        
+
         // Sort teams by rating in descending order
         teamsData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
@@ -288,6 +313,6 @@ export function useTeamsForLadder(ladderId: string) {
     teamsWithPlayers,
     loading,
     error,
-    refreshTeams: fetchTeams
+    refreshTeams: fetchTeams,
   };
 }

@@ -1,12 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../amplify/data/resource';
+"use client";
 
-const client = generateClient<Schema>();
-
-type Match = Schema["Match"]["type"];
-type Team = Schema["Team"]["type"];
-type Ladder = Schema["Ladder"]["type"];
+import { useCallback, useEffect, useState } from "react";
+import {
+  getClient,
+  Ladder,
+  ladderClient,
+  Match,
+  matchClient,
+  Team,
+  teamClient,
+} from "../amplify-helpers";
 
 export interface MatchWithDetails extends Match {
   team1Details?: Team | null;
@@ -26,8 +29,15 @@ export function useMatchList() {
     setError(null);
 
     try {
-      const { data: matchData, errors } = await client.models.Match.list({
-        selectionSet: ["id", "ladderId", "team1Id", "team2Id", "winnerId", "createdAt"]
+      const { data: matchData, errors } = await matchClient().list({
+        selectionSet: [
+          "id",
+          "ladderId",
+          "team1Id",
+          "team2Id",
+          "winnerId",
+          "createdAt",
+        ],
       });
 
       if (errors) {
@@ -40,11 +50,12 @@ export function useMatchList() {
       // Ensure we only use valid match objects to prevent UI errors
       if (matchData && Array.isArray(matchData)) {
         const validMatches = matchData.filter(
-          match => match !== null && 
-                 typeof match === 'object' && 
-                 match.id && 
-                 match.team1Id && 
-                 match.team2Id
+          (match) =>
+            match !== null &&
+            typeof match === "object" &&
+            match.id &&
+            match.team1Id &&
+            match.team2Id
         );
 
         console.log(`Fetched ${validMatches.length} matches`);
@@ -55,7 +66,7 @@ export function useMatchList() {
             // Fetch team1 details
             let team1 = null;
             if (match.team1Id) {
-              const team1Result = await client.models.Team.get({
+              const team1Result = await teamClient().get({
                 id: match.team1Id,
               });
               team1 = team1Result.data;
@@ -64,7 +75,7 @@ export function useMatchList() {
             // Fetch team2 details
             let team2 = null;
             if (match.team2Id) {
-              const team2Result = await client.models.Team.get({
+              const team2Result = await teamClient().get({
                 id: match.team2Id,
               });
               team2 = team2Result.data;
@@ -73,7 +84,7 @@ export function useMatchList() {
             // Fetch winner details
             let winner = null;
             if (match.winnerId) {
-              const winnerResult = await client.models.Team.get({
+              const winnerResult = await teamClient().get({
                 id: match.winnerId,
               });
               winner = winnerResult.data;
@@ -82,7 +93,7 @@ export function useMatchList() {
             // Fetch ladder details
             let ladder = null;
             if (match.ladderId) {
-              const ladderResult = await client.models.Ladder.get({
+              const ladderResult = await ladderClient().get({
                 id: match.ladderId,
               });
               ladder = ladderResult.data;
@@ -93,28 +104,34 @@ export function useMatchList() {
               team1Details: team1,
               team2Details: team2,
               winnerDetails: winner,
-              ladderDetails: ladder
+              ladderDetails: ladder,
             } as MatchWithDetails;
           } catch (err) {
-            console.error(`Error fetching related data for match ${match.id}:`, err);
+            console.error(
+              `Error fetching related data for match ${match.id}:`,
+              err
+            );
             return {
               ...match,
               team1Details: null,
               team2Details: null,
               winnerDetails: null,
-              ladderDetails: null
+              ladderDetails: null,
             } as MatchWithDetails;
           }
         });
 
         // Wait for all fetches to complete
-        const matchesWithDetails = await Promise.all(matchesWithDetailsPromises);
-        
-        // Sort by creation date, newest first
-        matchesWithDetails.sort((a, b) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        const matchesWithDetails = await Promise.all(
+          matchesWithDetailsPromises
         );
-        
+
+        // Sort by creation date, newest first
+        matchesWithDetails.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
         setMatches(matchesWithDetails);
       } else {
         setMatches([]);
@@ -136,7 +153,7 @@ export function useMatchList() {
     matches,
     loading,
     error,
-    refreshMatches: fetchMatches
+    refreshMatches: fetchMatches,
   };
 }
 
@@ -152,14 +169,21 @@ export function useMatchesForLadder(ladderId: string) {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     setError(null);
 
     try {
-      const { data: matchData, errors } = await client.models.Match.list({
+      const { data: matchData, errors } = await matchClient().list({
         filter: { ladderId: { eq: ladderId } },
-        selectionSet: ["id", "ladderId", "team1Id", "team2Id", "winnerId", "createdAt"]
+        selectionSet: [
+          "id",
+          "ladderId",
+          "team1Id",
+          "team2Id",
+          "winnerId",
+          "createdAt",
+        ],
       });
 
       if (errors) {
@@ -172,14 +196,17 @@ export function useMatchesForLadder(ladderId: string) {
       // Ensure we only use valid match objects to prevent UI errors
       if (matchData && Array.isArray(matchData)) {
         const validMatches = matchData.filter(
-          match => match !== null && 
-                 typeof match === 'object' && 
-                 match.id && 
-                 match.team1Id && 
-                 match.team2Id
+          (match) =>
+            match !== null &&
+            typeof match === "object" &&
+            match.id &&
+            match.team1Id &&
+            match.team2Id
         );
 
-        console.log(`Fetched ${validMatches.length} matches for ladder ${ladderId}`);
+        console.log(
+          `Fetched ${validMatches.length} matches for ladder ${ladderId}`
+        );
 
         // Create an array of promises to fetch related data for each match in parallel
         const matchesWithDetailsPromises = validMatches.map(async (match) => {
@@ -187,7 +214,7 @@ export function useMatchesForLadder(ladderId: string) {
             // Fetch team1 details
             let team1 = null;
             if (match.team1Id) {
-              const team1Result = await client.models.Team.get({
+              const team1Result = await teamClient().get({
                 id: match.team1Id,
               });
               team1 = team1Result.data;
@@ -196,7 +223,7 @@ export function useMatchesForLadder(ladderId: string) {
             // Fetch team2 details
             let team2 = null;
             if (match.team2Id) {
-              const team2Result = await client.models.Team.get({
+              const team2Result = await teamClient().get({
                 id: match.team2Id,
               });
               team2 = team2Result.data;
@@ -205,7 +232,7 @@ export function useMatchesForLadder(ladderId: string) {
             // Fetch winner details
             let winner = null;
             if (match.winnerId) {
-              const winnerResult = await client.models.Team.get({
+              const winnerResult = await teamClient().get({
                 id: match.winnerId,
               });
               winner = winnerResult.data;
@@ -216,28 +243,34 @@ export function useMatchesForLadder(ladderId: string) {
               team1Details: team1,
               team2Details: team2,
               winnerDetails: winner,
-              ladderDetails: null // We already have the ladder ID
+              ladderDetails: null, // We already have the ladder ID
             } as MatchWithDetails;
           } catch (err) {
-            console.error(`Error fetching related data for match ${match.id}:`, err);
+            console.error(
+              `Error fetching related data for match ${match.id}:`,
+              err
+            );
             return {
               ...match,
               team1Details: null,
               team2Details: null,
               winnerDetails: null,
-              ladderDetails: null
+              ladderDetails: null,
             } as MatchWithDetails;
           }
         });
 
         // Wait for all fetches to complete
-        const matchesWithDetails = await Promise.all(matchesWithDetailsPromises);
-        
-        // Sort by creation date, newest first
-        matchesWithDetails.sort((a, b) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        const matchesWithDetails = await Promise.all(
+          matchesWithDetailsPromises
         );
-        
+
+        // Sort by creation date, newest first
+        matchesWithDetails.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
         setMatches(matchesWithDetails);
       } else {
         setMatches([]);
@@ -259,7 +292,7 @@ export function useMatchesForLadder(ladderId: string) {
     matches,
     loading,
     error,
-    refreshMatches: fetchMatches
+    refreshMatches: fetchMatches,
   };
 }
 
@@ -268,81 +301,88 @@ export function useMatchCreate() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const createMatch = useCallback(async (
-    ladderId: string, 
-    team1Id: string, 
-    team2Id: string, 
-    winnerId?: string
-  ) => {
-    // Reset error state
-    setCreateError(null);
+  const createMatch = useCallback(
+    async (
+      ladderId: string,
+      team1Id: string,
+      team2Id: string,
+      winnerId?: string
+    ) => {
+      // Reset error state
+      setCreateError(null);
 
-    // Validate input
-    if (!ladderId || !team1Id || !team2Id) {
-      setCreateError("Ladder and both teams are required");
-      return null;
-    }
-
-    if (team1Id === team2Id) {
-      setCreateError("Teams must be different");
-      return null;
-    }
-
-    setIsCreating(true);
-
-    try {
-      const { data: createdMatch, errors } = await client.models.Match.create({
-        ladderId,
-        team1Id,
-        team2Id,
-        winnerId: winnerId || undefined
-      });
-
-      if (errors) {
-        console.error("Error creating match:", errors);
-        setCreateError("Failed to create match. Please try again.");
+      // Validate input
+      if (!ladderId || !team1Id || !team2Id) {
+        setCreateError("Ladder and both teams are required");
         return null;
       }
 
-      console.log("Match created successfully:", createdMatch);
-      
-      // If we have a winner, update ratings
-      if (winnerId) {
-        try {
-          await updateRatings(team1Id, team2Id, winnerId);
-        } catch (error) {
-          console.error("Error updating ratings:", error);
-          // We don't fail the match creation if rating update fails
-        }
+      if (team1Id === team2Id) {
+        setCreateError("Teams must be different");
+        return null;
       }
-      
-      return createdMatch;
-    } catch (error) {
-      console.error("Error creating match:", error);
-      setCreateError("An unexpected error occurred. Please try again.");
-      return null;
-    } finally {
-      setIsCreating(false);
-    }
-  }, []);
-  
+
+      setIsCreating(true);
+
+      try {
+        const { data: createdMatch, errors } = await matchClient().create({
+          ladderId,
+          team1Id,
+          team2Id,
+          winnerId: winnerId || undefined,
+        });
+
+        if (errors) {
+          console.error("Error creating match:", errors);
+          setCreateError("Failed to create match. Please try again.");
+          return null;
+        }
+
+        console.log("Match created successfully:", createdMatch);
+
+        // If we have a winner, update ratings
+        if (winnerId) {
+          try {
+            await updateRatings(team1Id, team2Id, winnerId);
+          } catch (error) {
+            console.error("Error updating ratings:", error);
+            // We don't fail the match creation if rating update fails
+          }
+        }
+
+        return createdMatch;
+      } catch (error) {
+        console.error("Error creating match:", error);
+        setCreateError("An unexpected error occurred. Please try again.");
+        return null;
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    []
+  );
+
   // Update team ratings based on match result
-  const updateRatings = async (team1Id: string, team2Id: string, winnerId: string) => {
+  const updateRatings = async (
+    team1Id: string,
+    team2Id: string,
+    winnerId: string
+  ) => {
     // Get current ratings
-    const team1Result = await client.models.Team.get({ id: team1Id });
-    const team2Result = await client.models.Team.get({ id: team2Id });
-    
+    const team1Result = await teamClient().get({ id: team1Id });
+    const team2Result = await teamClient().get({ id: team2Id });
+
     if (!team1Result.data || !team2Result.data) {
       throw new Error("Could not find teams");
     }
-    
+
     const team1 = team1Result.data;
     const team2 = team2Result.data;
-    
+
     // Get current ratings with defaults
     const team1Rating = team1.rating || 1200;
     const team2Rating = team2.rating || 1200;
-    
+
     // Determine winner and loser ratings
     let winnerRating, loserRating, winnerId2, loserId;
     if (winnerId === team1Id) {
@@ -356,36 +396,40 @@ export function useMatchCreate() {
       winnerRating = team2Rating;
       loserRating = team1Rating;
     }
-    
+
     // Calculate new ratings (using Elo rating system)
     const K = 32; // K-factor determines how much ratings change
-    
+
     // Calculate expected scores
-    const expectedWinner = 1 / (1 + Math.pow(10, (loserRating - winnerRating) / 400));
-    const expectedLoser = 1 / (1 + Math.pow(10, (winnerRating - loserRating) / 400));
-    
+    const expectedWinner =
+      1 / (1 + Math.pow(10, (loserRating - winnerRating) / 400));
+    const expectedLoser =
+      1 / (1 + Math.pow(10, (winnerRating - loserRating) / 400));
+
     // Calculate new ratings
     const newWinnerRating = Math.round(winnerRating + K * (1 - expectedWinner));
     const newLoserRating = Math.round(loserRating + K * (0 - expectedLoser));
-    
+
     // Update ratings in database
-    await client.models.Team.update({
+    await teamClient().update({
       id: winnerId2,
-      rating: newWinnerRating
+      rating: newWinnerRating,
     });
-    
-    await client.models.Team.update({
+
+    await teamClient().update({
       id: loserId,
-      rating: newLoserRating
+      rating: newLoserRating,
     });
-    
-    console.log(`Updated ratings: ${winnerId2} ${winnerRating} -> ${newWinnerRating}, ${loserId} ${loserRating} -> ${newLoserRating}`);
+
+    console.log(
+      `Updated ratings: ${winnerId2} ${winnerRating} -> ${newWinnerRating}, ${loserId} ${loserRating} -> ${newLoserRating}`
+    );
   };
 
   return {
     createMatch,
     isCreating,
-    createError
+    createError,
   };
 }
 
@@ -401,14 +445,14 @@ export function useTeamsForMatch(ladderId: string) {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     setError(null);
 
     try {
-      const { data: teamData, errors } = await client.models.Team.list({
+      const { data: teamData, errors } = await teamClient().list({
         filter: { ladderId: { eq: ladderId } },
-        selectionSet: ["id", "name", "rating", "player1Id", "player2Id"]
+        selectionSet: ["id", "name", "rating", "player1Id", "player2Id"],
       });
 
       if (errors) {
@@ -421,15 +465,13 @@ export function useTeamsForMatch(ladderId: string) {
       // Ensure we only use valid team objects to prevent UI errors
       if (teamData && Array.isArray(teamData)) {
         const validTeams = teamData.filter(
-          team => team !== null && 
-                typeof team === 'object' && 
-                team.id && 
-                team.name
+          (team) =>
+            team !== null && typeof team === "object" && team.id && team.name
         );
 
         // Sort by rating
         validTeams.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        
+
         setTeams(validTeams);
       } else {
         setTeams([]);
@@ -451,6 +493,6 @@ export function useTeamsForMatch(ladderId: string) {
     teams,
     loading,
     error,
-    refreshTeams: fetchTeams
+    refreshTeams: fetchTeams,
   };
 }

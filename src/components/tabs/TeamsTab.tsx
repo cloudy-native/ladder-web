@@ -1,77 +1,81 @@
+"use client";
+
 import {
   Alert,
   Box,
   Button,
-  Flex,
-  Heading,
   HStack,
   Icon,
   Spinner,
   Text,
   useDialog,
-  VStack,
+  VStack
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import { IoAddCircle, IoRefresh } from "react-icons/io5";
-import type { Schema } from "../../../amplify/data/resource";
-import { Pagination, SearchInput } from "../shared/";
-import { 
-  CreateTeamDialog, 
-  TeamCard, 
-  LadderManager, 
-  JoinTeamDialog 
-} from "../teams";
-import { 
-  useTeamList, 
-  usePlayer, 
-  usePagination, 
+import {
+  TeamWithPlayers,
   useFilter,
-  TeamWithPlayers
+  usePagination,
+  useTeamList
 } from "../../utils/hooks";
-
-type Player = Schema["Player"]["type"];
+import { Pagination, SearchInput } from "../shared/";
+import {
+  CreateTeamDialog,
+  JoinTeamDialog,
+  LadderManager,
+  TeamCard,
+} from "../teams";
 
 export function TeamsTab() {
   // Custom hooks
   const { teams, loading, refreshTeams } = useTeamList();
-  const { currentPlayer, isPlayerInTeam, isPlayerOnAnyTeam, refreshPlayer } = usePlayer();
-  
+
   // Filter hook
-  const teamFilter = useCallback((team: TeamWithPlayers, searchText: string) => {
-    // Check team name
-    if (team.name.toLowerCase().includes(searchText)) return true;
-    
-    // Check player names
-    if (team.player1Details && 
+  const teamFilter = useCallback(
+    (team: TeamWithPlayers, searchText: string) => {
+      // Check team name
+      if (team.name.toLowerCase().includes(searchText)) return true;
+
+      // Check player names
+      if (
+        team.player1Details &&
         `${team.player1Details.givenName} ${team.player1Details.familyName}`
           .toLowerCase()
-          .includes(searchText)) {
-      return true;
-    }
-    
-    if (team.player2Details && 
+          .includes(searchText)
+      ) {
+        return true;
+      }
+
+      if (
+        team.player2Details &&
         `${team.player2Details.givenName} ${team.player2Details.familyName}`
           .toLowerCase()
-          .includes(searchText)) {
-      return true;
-    }
-    
-    // Check ladder name
-    if (team.ladderDetails && 
-        team.ladderDetails.name.toLowerCase().includes(searchText)) {
-      return true;
-    }
-    
-    return false;
-  }, []);
-  
-  const { 
-    filterText, 
-    setFilterText, 
-    filteredItems: filteredTeams, 
-    clearFilter 
+          .includes(searchText)
+      ) {
+        return true;
+      }
+
+      // Check ladder name
+      if (
+        team.ladderDetails &&
+        team.ladderDetails.name.toLowerCase().includes(searchText)
+      ) {
+        return true;
+      }
+
+      return false;
+    },
+    []
+  );
+
+  const {
+    filterText,
+    setFilterText,
+    filteredItems: filteredTeams,
+    clearFilter,
   } = useFilter(teams, teamFilter);
-  
+
   // Pagination
   const TEAMS_PER_PAGE = 5;
   const {
@@ -81,33 +85,34 @@ export function TeamsTab() {
     paginatedItems: paginatedTeams,
     firstItemIndex,
     lastItemIndex,
-    totalItems
+    totalItems,
   } = usePagination(filteredTeams, TEAMS_PER_PAGE);
-  
+
   // Dialogs
   const addTeamDialog = useDialog();
   const joinTeamDialog = useDialog();
   const ladderDialog = useDialog();
-  
+
   // Selected team state
-  const [selectedTeam, setSelectedTeam] = useState<TeamWithPlayers | null>(null);
-  
+  const [selectedTeam, setSelectedTeam] = useState<TeamWithPlayers | null>(
+    null
+  );
+
   // Function to refresh all data
   const refreshData = () => {
     refreshTeams();
-    refreshPlayer();
     // Reset to first page on refresh
     setCurrentPage(1);
     // Clear filter
     clearFilter();
   };
-  
+
   // Handle team click
   const handleTeamClick = (team: TeamWithPlayers) => {
     setSelectedTeam(team);
     joinTeamDialog.setOpen(true);
   };
-  
+
   // Handle ladder management
   const handleManageLadder = (team: TeamWithPlayers, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click event
@@ -119,25 +124,20 @@ export function TeamsTab() {
     <Box>
       {/* Action Buttons */}
       <Box mb={4}>
-        <Flex justify="space-between" align="center" mb={4}>
-          <Heading size="md">All Teams</Heading>
-          <HStack>
-            <Button onClick={refreshData}>
-              <Icon as={IoRefresh} mr={2} /> Refresh
-            </Button>
-            <CreateTeamDialog
-              dialog={addTeamDialog}
-              onTeamCreated={refreshTeams}
-              currentPlayer={currentPlayer}
-              isPlayerOnAnyTeam={() => isPlayerOnAnyTeam(teams)}
-              triggerButton={
-                <Button>
-                  <Icon as={IoAddCircle} mr={2} /> Create Team
-                </Button>
-              }
-            />
-          </HStack>
-        </Flex>
+        <HStack justifyContent="flex-end" mb={4}>
+          <Button onClick={refreshData}>
+            <Icon as={IoRefresh} mr={2} /> Refresh
+          </Button>
+          <CreateTeamDialog
+            dialog={addTeamDialog}
+            onTeamCreated={refreshTeams}
+            triggerButton={
+              <Button>
+                <Icon as={IoAddCircle} mr={2} /> Create Team
+              </Button>
+            }
+          />
+        </HStack>
       </Box>
 
       {/* Search input */}
@@ -180,37 +180,28 @@ export function TeamsTab() {
           <Alert.Title>No teams found</Alert.Title>
         </Alert.Root>
       ) : (
-        <VStack align="stretch" spacing={4}>
+        <VStack align="stretch" >
           {/* Teams for current page */}
           <VStack align="stretch">
             {filteredTeams.length === 0 ? (
               <Alert.Root status="info">
                 <Alert.Indicator />
                 <Alert.Title>No teams match your search</Alert.Title>
-                <Alert.Description>Try a different search term or clear your filter.</Alert.Description>
+                <Alert.Description>
+                  Try a different search term or clear your filter.
+                </Alert.Description>
               </Alert.Root>
             ) : (
               paginatedTeams.map((team) => (
                 <TeamCard
                   key={team.id}
                   team={team}
-                  currentPlayerId={currentPlayer?.id}
                   onClick={() => handleTeamClick(team)}
-                  actionButton={
-                    isPlayerInTeam(team.id, teams) ? (
-                      <Button
-                        size="xs"
-                        colorScheme="blue"
-                        onClick={(e) => handleManageLadder(team, e)}
-                      >
-                        Manage Ladder
-                      </Button>
-                    ) : undefined
-                  }
                 />
-              )))}
+              ))
+            )}
           </VStack>
-          
+
           {/* Pagination controls */}
           {filteredTeams.length > TEAMS_PER_PAGE && (
             <Pagination

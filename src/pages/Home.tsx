@@ -1,5 +1,7 @@
+'use client'
+
 import { Container, Heading, Icon, Tabs } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   IoAnalytics,
   IoPeople,
@@ -7,7 +9,6 @@ import {
   IoSettingsSharp,
   IoTrophy
 } from "react-icons/io5";
-import { Schema } from "../../amplify/data/resource";
 import { 
   AdminTab, 
   LaddersTab, 
@@ -15,33 +16,11 @@ import {
   PlayersTab, 
   TeamsTab 
 } from "../components/tabs";
-import { getCurrentPlayer } from "../data";
-import { nameFor } from "../utils/random";
 
-type Player = Schema["Player"]["type"];
 type TabValue = "ladders" | "players" | "teams" | "matches" | "admin";
 
 export default function Home() {
-  // TODO: rename currentPlayer
-  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabValue>("ladders");
-
-  // Fetch player data once on component mount
-  useEffect(() => {
-    async function fetchPlayer() {
-      try {
-        setLoading(true);
-        setCurrentPlayer(await getCurrentPlayer());
-      } catch (error) {
-        console.error("Error fetching player in Home:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchPlayer();
-  }, []);
 
   const handleTabChange = (details: { value: string }) => {
     setActiveTab(details.value as TabValue);
@@ -50,8 +29,7 @@ export default function Home() {
   return (
     <Container maxW="container.lg">
       <Heading as="h1" mb={6}>
-        Welcome{" "}
-        {loading ? " ..." : currentPlayer ? nameFor(currentPlayer) : ""}
+        Welcome to Ladder Web
       </Heading>
 
       <Tabs.Root

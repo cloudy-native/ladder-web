@@ -7,10 +7,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 dist-ssr
 *.local
+build
+out
 
 # Editor directories and files
 .vscode/*
@@ -23,7 +28,10 @@ dist-ssr
 *.sln
 *.sw?
 
-# amplify
+# Next.js
+.next/
+
+# AWS Amplify
 .amplify
 amplify_outputs*
 amplifyconfiguration*

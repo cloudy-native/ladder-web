@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Alert,
   Box,
@@ -12,12 +14,10 @@ import {
   DialogTitle,
   DialogTrigger,
   Flex,
-  Heading,
   HStack,
   Icon,
   SelectContent,
   SelectItem,
-  SelectLabel,
   SelectRoot,
   SelectTrigger,
   SelectValueText,
@@ -140,49 +140,47 @@ export function MatchesTab() {
     <Box>
       {/* Header and action buttons */}
       <Box mb={4}>
-        <Flex justify="space-between" align="center" mb={4}>
-          <Heading size="md">Match History</Heading>
-          <HStack>
-            <Button onClick={refreshData}>
-              <Icon as={IoRefresh} mr={2} /> Refresh
-            </Button>
-            <DialogRootProvider value={createMatchDialog}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Icon as={IoAddCircle} mr={2} /> Record Match
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Record Match</DialogTitle>
-                </DialogHeader>
-                <DialogBody>
-                  <VStack align="stretch">
-                    <Field label="Ladder">
-                      <SelectRoot
-                        collection={createListCollection({ items: ladders })}
-                        size="sm"
-                        width="320px"
-                        onChange={(e) => {
-                          setSelectedLadderId(e.target);
-                          // Reset team selections when ladder changes
-                          setSelectedTeam1Id("");
-                          setSelectedTeam2Id("");
-                          setSelectedWinnerId("");
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValueText placeholder="Select ladder" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ladders.map((ladder) => (
-                            <SelectItem item={ladder} key={ladder.id}>
-                              {ladder.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </SelectRoot>
-                      {/* <Select
+        <HStack justifyContent="flex-end" mb={4}>
+          <Button onClick={refreshData}>
+            <Icon as={IoRefresh} mr={2} /> Refresh
+          </Button>
+          <DialogRootProvider value={createMatchDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Icon as={IoAddCircle} mr={2} /> Record Match
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Record Match</DialogTitle>
+              </DialogHeader>
+              <DialogBody>
+                <VStack align="stretch">
+                  <Field label="Ladder">
+                    <SelectRoot
+                      collection={createListCollection({ items: ladders })}
+                      size="sm"
+                      width="320px"
+                      onChange={(e) => {
+                        setSelectedLadderId(e.target);
+                        // Reset team selections when ladder changes
+                        setSelectedTeam1Id("");
+                        setSelectedTeam2Id("");
+                        setSelectedWinnerId("");
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValueText placeholder="Select ladder" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ladders.map((ladder) => (
+                          <SelectItem item={ladder} key={ladder.id}>
+                            {ladder.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </SelectRoot>
+                    {/* <Select
                         placeholder="Select ladder"
                         value={selectedLadderId}
                         onChange={(e) => {
@@ -199,12 +197,12 @@ export function MatchesTab() {
                           </option>
                         ))}
                       </Select> */}
-                    </Field>
+                  </Field>
 
-                    {selectedLadderId && (
-                      <>
-                        <Field label="Team 1">
-                          {/* <Select
+                  {selectedLadderId && (
+                    <>
+                      <Field label="Team 1">
+                        {/* <Select
                             placeholder="Select team 1"
                             value={selectedTeam1Id}
                             onChange={(e) => {
@@ -224,10 +222,10 @@ export function MatchesTab() {
                               </option>
                             ))}
                           </Select> */}
-                        </Field>
+                      </Field>
 
-                        <Field label="Team 2">
-                          {/* <Select
+                      <Field label="Team 2">
+                        {/* <Select
                             placeholder="Select team 2"
                             value={selectedTeam2Id}
                             onChange={(e) => {
@@ -249,14 +247,14 @@ export function MatchesTab() {
                                 </option>
                               ))}
                           </Select> */}
-                        </Field>
+                      </Field>
 
-                        {selectedTeam1Id && selectedTeam2Id && (
-                          <Field
-                            label="Winner (optional)"
-                            helperText="If you select a winner, team ratings will be updated automatically."
-                          >
-                            {/* <Select
+                      {selectedTeam1Id && selectedTeam2Id && (
+                        <Field
+                          label="Winner (optional)"
+                          helperText="If you select a winner, team ratings will be updated automatically."
+                        >
+                          {/* <Select
                               placeholder="Select winner (optional)"
                               value={selectedWinnerId}
                               onChange={(e) =>
@@ -278,59 +276,58 @@ export function MatchesTab() {
                                 }
                               </option>
                             </Select> */}
-                          </Field>
-                        )}
-                      </>
-                    )}
+                        </Field>
+                      )}
+                    </>
+                  )}
 
-                    {!selectedLadderId && teamsForLadder.length === 0 && (
-                      <Alert.Root status="info">
-                        <Alert.Indicator />
-                        <Alert.Title>Select a ladder first</Alert.Title>
-                      </Alert.Root>
-                    )}
+                  {!selectedLadderId && teamsForLadder.length === 0 && (
+                    <Alert.Root status="info">
+                      <Alert.Indicator />
+                      <Alert.Title>Select a ladder first</Alert.Title>
+                    </Alert.Root>
+                  )}
 
-                    {selectedLadderId && teamsForLadder.length < 2 && (
-                      <Alert.Root status="warning">
-                        <Alert.Indicator />
-                        <Alert.Title>Not enough teams</Alert.Title>
-                        <Alert.Description>
-                          This ladder needs at least 2 teams to record a match.
-                        </Alert.Description>
-                      </Alert.Root>
-                    )}
+                  {selectedLadderId && teamsForLadder.length < 2 && (
+                    <Alert.Root status="warning">
+                      <Alert.Indicator />
+                      <Alert.Title>Not enough teams</Alert.Title>
+                      <Alert.Description>
+                        This ladder needs at least 2 teams to record a match.
+                      </Alert.Description>
+                    </Alert.Root>
+                  )}
 
-                    {createError && (
-                      <Alert.Root status="error">
-                        <Alert.Indicator />
-                        <Alert.Title>{createError}</Alert.Title>
-                      </Alert.Root>
-                    )}
-                  </VStack>
-                </DialogBody>
-                <DialogFooter>
-                  <Button onClick={() => createMatchDialog.setOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleCreateMatch}
-                    loading={isCreating}
-                    loadingText="Recording..."
-                    disabled={
-                      isCreating ||
-                      !selectedLadderId ||
-                      !selectedTeam1Id ||
-                      !selectedTeam2Id
-                    }
-                  >
-                    Record Match
-                  </Button>
-                </DialogFooter>
-                <DialogCloseTrigger />
-              </DialogContent>
-            </DialogRootProvider>
-          </HStack>
-        </Flex>
+                  {createError && (
+                    <Alert.Root status="error">
+                      <Alert.Indicator />
+                      <Alert.Title>{createError}</Alert.Title>
+                    </Alert.Root>
+                  )}
+                </VStack>
+              </DialogBody>
+              <DialogFooter>
+                <Button onClick={() => createMatchDialog.setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateMatch}
+                  loading={isCreating}
+                  loadingText="Recording..."
+                  disabled={
+                    isCreating ||
+                    !selectedLadderId ||
+                    !selectedTeam1Id ||
+                    !selectedTeam2Id
+                  }
+                >
+                  Record Match
+                </Button>
+              </DialogFooter>
+              <DialogCloseTrigger />
+            </DialogContent>
+          </DialogRootProvider>
+        </HStack>
       </Box>
 
       {/* Search input */}

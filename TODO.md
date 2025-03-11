@@ -1,1 +1,3 @@
-- [ ] figure out async in onClick()
+- [x] figure out async in onClick()
+- [x] move all getClient().modes.x to xClient()
+- [ ] 

@@ -1,20 +1,23 @@
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
+"use client";
 
-const client = generateClient<Schema>();
-
-type Ladder = Schema["Ladder"]["type"];
-type Player = Schema["Player"]["type"];
-type Team = Schema["Team"]["type"];
-type Match = Schema["Match"]["type"];
+import { generateClient } from "aws-amplify/api";
+import { getClient, ladderClient, matchClient, playerClient, teamClient } from "./amplify-helpers";
+import { Schema } from "../../amplify/data/resource";
 
 /**
  * Fetches all teams from the database
  */
 export async function getTeams() {
   try {
-    const { data: teamData, errors } = await client.models.Team.list({
-      selectionSet: ["id", "name", "rating", "ladderId", "player1Id", "player2Id"]
+    const { data: teamData, errors } = await teamClient().list({
+      selectionSet: [
+        "id",
+        "name",
+        "rating",
+        "ladderId",
+        "player1Id",
+        "player2Id",
+      ],
     });
 
     if (errors) {
@@ -23,13 +26,11 @@ export async function getTeams() {
 
     // Ensure we only use valid team objects to prevent UI errors
     if (teamData && Array.isArray(teamData)) {
-      const validTeams = teamData.filter(team => 
-        team !== null && 
-        typeof team === 'object' &&
-        team.id &&
-        team.name
+      const validTeams = teamData.filter(
+        (team) =>
+          team !== null && typeof team === "object" && team.id && team.name
       );
-      
+
       console.log(`Fetched ${validTeams.length} teams`);
       return validTeams;
     } else {
@@ -46,8 +47,8 @@ export async function getTeams() {
  */
 export async function getTeamWithPlayers(teamId: string) {
   try {
-    const { data: team, errors } = await client.models.Team.get({
-      id: teamId
+    const { data: team, errors } = await teamClient().get({
+      id: teamId,
     });
 
     if (errors) {
@@ -64,15 +65,15 @@ export async function getTeamWithPlayers(teamId: string) {
     let player2 = null;
 
     if (team.player1Id) {
-      const player1Result = await client.models.Player.get({
-        id: team.player1Id
+      const player1Result = await playerClient().get({
+        id: team.player1Id,
       });
       player1 = player1Result.data;
     }
 
     if (team.player2Id) {
-      const player2Result = await client.models.Player.get({
-        id: team.player2Id
+      const player2Result = await playerClient().get({
+        id: team.player2Id,
       });
       player2 = player2Result.data;
     }
@@ -80,7 +81,7 @@ export async function getTeamWithPlayers(teamId: string) {
     return {
       ...team,
       player1Details: player1,
-      player2Details: player2
+      player2Details: player2,
     };
   } catch (error) {
     console.error(`Error fetching team with players ${teamId}:`, error);
@@ -93,9 +94,16 @@ export async function getTeamWithPlayers(teamId: string) {
  */
 export async function getTeamsForLadder(ladderId: string) {
   try {
-    const { data: teamData, errors } = await client.models.Team.list({
+    const { data: teamData, errors } = await teamClient().list({
       filter: { ladderId: { eq: ladderId } },
-      selectionSet: ["id", "name", "rating", "ladderId", "player1Id", "player2Id"]
+      selectionSet: [
+        "id",
+        "name",
+        "rating",
+        "ladderId",
+        "player1Id",
+        "player2Id",
+      ],
     });
 
     if (errors) {
@@ -104,22 +112,24 @@ export async function getTeamsForLadder(ladderId: string) {
 
     // Ensure we only use valid team objects to prevent UI errors
     if (teamData && Array.isArray(teamData)) {
-      const validTeams = teamData.filter(team => 
-        team !== null && 
-        typeof team === 'object' &&
-        team.id &&
-        team.name
+      const validTeams = teamData.filter(
+        (team) =>
+          team !== null && typeof team === "object" && team.id && team.name
       );
-      
+
       // For each team, fetch player details
       const teamsWithPlayersPromises = validTeams.map(async (team) => {
         return await getTeamWithPlayers(team.id);
       });
-      
+
       const teamsWithPlayers = await Promise.all(teamsWithPlayersPromises);
-      const validTeamsWithPlayers = teamsWithPlayers.filter(team => team !== null);
-      
-      console.log(`Fetched ${validTeamsWithPlayers.length} teams for ladder ${ladderId}`);
+      const validTeamsWithPlayers = teamsWithPlayers.filter(
+        (team) => team !== null
+      );
+
+      console.log(
+        `Fetched ${validTeamsWithPlayers.length} teams for ladder ${ladderId}`
+      );
       return validTeamsWithPlayers;
     } else {
       return [];
@@ -135,8 +145,8 @@ export async function getTeamsForLadder(ladderId: string) {
  */
 export async function getLadders() {
   try {
-    const { data: ladderData, errors } = await client.models.Ladder.list({
-      selectionSet: ["id", "name", "description", "teams.*"]
+    const { data: ladderData, errors } = await ladderClient().list({
+      selectionSet: ["id", "name", "description", "teams.*"],
     });
 
     if (errors) {
@@ -145,16 +155,17 @@ export async function getLadders() {
 
     // Ensure we only use valid ladder objects to prevent UI errors
     if (ladderData && Array.isArray(ladderData)) {
-      const validLadders = ladderData.filter(ladder => 
-        ladder !== null && 
-        typeof ladder === 'object' &&
-        ladder.id &&
-        ladder.name
+      const validLadders = ladderData.filter(
+        (ladder) =>
+          ladder !== null &&
+          typeof ladder === "object" &&
+          ladder.id &&
+          ladder.name
       );
-      
+
       // Sort by name for better user experience
       validLadders.sort((a, b) => a.name.localeCompare(b.name));
-      
+
       return validLadders;
     } else {
       return [];
@@ -170,8 +181,8 @@ export async function getLadders() {
  */
 export async function getLadderWithTeams(ladderId: string) {
   try {
-    const { data: ladder, errors } = await client.models.Ladder.get({
-      id: ladderId
+    const { data: ladder, errors } = await ladderClient().get({
+      id: ladderId,
     });
 
     if (errors) {
@@ -182,13 +193,13 @@ export async function getLadderWithTeams(ladderId: string) {
     if (ladder) {
       // Get teams for this ladder
       const teams = await getTeamsForLadder(ladderId);
-      
+
       return {
         ...ladder,
-        teamsList: teams
+        teamsList: teams,
       };
     }
-    
+
     return null;
   } catch (error) {
     console.error(`Error fetching ladder ${ladderId}:`, error);
@@ -201,8 +212,8 @@ export async function getLadderWithTeams(ladderId: string) {
  */
 export async function getTeamLadder(teamId: string) {
   try {
-    const { data: team, errors } = await client.models.Team.get({
-      id: teamId
+    const { data: team, errors } = await teamClient().get({
+      id: teamId,
     });
 
     if (errors) {
@@ -211,13 +222,13 @@ export async function getTeamLadder(teamId: string) {
     }
 
     if (team && team.ladderId) {
-      const { data: ladder } = await client.models.Ladder.get({
-        id: team.ladderId
+      const { data: ladder } = await ladderClient().get({
+        id: team.ladderId,
       });
-      
+
       return ladder;
     }
-    
+
     return null;
   } catch (error) {
     console.error(`Error fetching ladder for team ${teamId}:`, error);
@@ -230,8 +241,15 @@ export async function getTeamLadder(teamId: string) {
  */
 export async function getAllPlayers() {
   try {
-    const { data: playerData, errors } = await client.models.Player.list({
-      selectionSet: ["id", "givenName", "familyName", "email", "teamAsPlayer1.*", "teamAsPlayer2.*"]
+    const { data: playerData, errors } = await playerClient().list({
+      selectionSet: [
+        "id",
+        "givenName",
+        "familyName",
+        "email",
+        "teamAsPlayer1.*",
+        "teamAsPlayer2.*",
+      ],
     });
 
     if (errors) {
@@ -272,8 +290,8 @@ export async function getAllPlayers() {
  */
 export async function getPlayerById(playerId: string) {
   try {
-    const { data: player, errors } = await client.models.Player.get({
-      id: playerId
+    const { data: player, errors } = await playerClient().get({
+      id: playerId,
     });
 
     if (errors) {
@@ -284,21 +302,21 @@ export async function getPlayerById(playerId: string) {
     // Fetch the related team data if needed
     if (player) {
       // Get teams where this player is player1
-      const player1TeamsResult = await client.models.Team.list({
+      const player1TeamsResult = await teamClient().list({
         filter: { player1Id: { eq: playerId } },
-        selectionSet: ["id", "name", "rating", "ladderId"]
+        selectionSet: ["id", "name", "rating", "ladderId"],
       });
-      
+
       // Get teams where this player is player2
-      const player2TeamsResult = await client.models.Team.list({
+      const player2TeamsResult = await teamClient().list({
         filter: { player2Id: { eq: playerId } },
-        selectionSet: ["id", "name", "rating", "ladderId"]
+        selectionSet: ["id", "name", "rating", "ladderId"],
       });
-      
+
       return {
         ...player,
         teamAsPlayer1: player1TeamsResult.data || [],
-        teamAsPlayer2: player2TeamsResult.data || []
+        teamAsPlayer2: player2TeamsResult.data || [],
       };
     }
 
@@ -316,14 +334,14 @@ export async function getUnassignedPlayers() {
   try {
     // Get all players
     const allPlayers = await getAllPlayers();
-    
+
     // Filter to players that don't have teamAsPlayer1 or teamAsPlayer2
     const unassignedPlayers = allPlayers.filter(
-      player => 
-        (!player.teamAsPlayer1 || !player.teamAsPlayer2) && 
+      (player) =>
+        (!player.teamAsPlayer1 || !player.teamAsPlayer2) &&
         (!player.teamAsPlayer2 || !player.teamAsPlayer2)
     );
-    
+
     return unassignedPlayers;
   } catch (error) {
     console.error("Error fetching unassigned players:", error);
@@ -332,16 +350,22 @@ export async function getUnassignedPlayers() {
 }
 
 /**
- * Create a new team 
+ * Create a new team
  */
-export async function createTeam(name: string, rating: number = 1200, ladderId?: string, player1Id?: string, player2Id?: string) {
+export async function createTeam(
+  name: string,
+  rating: number = 1200,
+  ladderId?: string,
+  player1Id?: string,
+  player2Id?: string
+) {
   try {
-    const { data: createdTeam, errors } = await client.models.Team.create({
+    const { data: createdTeam, errors } = await teamClient().create({
       name: name.trim(),
       rating: rating,
       ladderId: ladderId,
       player1Id: player1Id,
-      player2Id: player2Id
+      player2Id: player2Id,
     });
 
     if (errors) {
@@ -360,11 +384,14 @@ export async function createTeam(name: string, rating: number = 1200, ladderId?:
 /**
  * Update a team's ladder
  */
-export async function updateTeamLadder(teamId: string, ladderId: string | null) {
+export async function updateTeamLadder(
+  teamId: string,
+  ladderId: string | null
+) {
   try {
-    const { data: updatedTeam, errors } = await client.models.Team.update({
+    const { data: updatedTeam, errors } = await teamClient().update({
       id: teamId,
-      ladderId: ladderId
+      ladderId: ladderId,
     });
 
     if (errors) {
@@ -383,7 +410,11 @@ export async function updateTeamLadder(teamId: string, ladderId: string | null) 
 /**
  * Add a player to a team in player1 or player2 slot
  */
-export async function addPlayerToTeam(teamId: string, playerId: string, slot: 'player1' | 'player2') {
+export async function addPlayerToTeam(
+  teamId: string,
+  playerId: string,
+  slot: "player1" | "player2"
+) {
   try {
     // First check if the player is already on a team
     const player = await getPlayerById(playerId);
@@ -397,18 +428,18 @@ export async function addPlayerToTeam(teamId: string, playerId: string, slot: 'p
       throw new Error("Team not found");
     }
 
-    if (slot === 'player1' && team.player1Id) {
+    if (slot === "player1" && team.player1Id) {
       throw new Error("Player 1 slot is already filled");
     }
 
-    if (slot === 'player2' && team.player2Id) {
+    if (slot === "player2" && team.player2Id) {
       throw new Error("Player 2 slot is already filled");
     }
 
     // Update the team with the player
-    const { data: updatedTeam, errors } = await client.models.Team.update({
+    const { data: updatedTeam, errors } = await teamClient().update({
       id: teamId,
-      [slot === 'player1' ? 'player1Id' : 'player2Id']: playerId
+      [slot === "player1" ? "player1Id" : "player2Id"]: playerId,
     });
 
     if (errors) {
@@ -427,7 +458,10 @@ export async function addPlayerToTeam(teamId: string, playerId: string, slot: 'p
 /**
  * Remove a player from a team
  */
-export async function removePlayerFromTeam(teamId: string, slot: 'player1' | 'player2') {
+export async function removePlayerFromTeam(
+  teamId: string,
+  slot: "player1" | "player2"
+) {
   try {
     // Get current team
     const team = await getTeamWithPlayers(teamId);
@@ -436,9 +470,9 @@ export async function removePlayerFromTeam(teamId: string, slot: 'player1' | 'pl
     }
 
     // Update the team to remove the player
-    const { data: updatedTeam, errors } = await client.models.Team.update({
+    const { data: updatedTeam, errors } = await teamClient().update({
       id: teamId,
-      [slot === 'player1' ? 'player1Id' : 'player2Id']: null
+      [slot === "player1" ? "player1Id" : "player2Id"]: null,
     });
 
     if (errors) {
@@ -459,13 +493,13 @@ export async function removePlayerFromTeam(teamId: string, slot: 'player1' | 'pl
  */
 export async function deleteTeam(id: string) {
   try {
-    const { errors } = await client.models.Team.delete({ id });
-    
+    const { errors } = await teamClient().delete({ id });
+
     if (errors) {
       console.error("Error deleting team:", errors);
       throw new Error("Failed to delete team");
     }
-    
+
     console.log("Team deleted successfully");
     return true;
   } catch (error) {
@@ -479,7 +513,7 @@ export async function deleteTeam(id: string) {
  */
 export async function createLadder(name: string, description?: string) {
   try {
-    const { data: createdLadder, errors } = await client.models.Ladder.create({
+    const { data: createdLadder, errors } = await ladderClient().create({
       name: name.trim(),
       description: description?.trim() || undefined,
     });
@@ -502,7 +536,7 @@ export async function createLadder(name: string, description?: string) {
  */
 export async function deleteLadder(id: string) {
   try {
-    const { errors } = await client.models.Ladder.delete({ id });
+    const { errors } = await ladderClient().delete({ id });
 
     if (errors) {
       console.error("Error deleting ladder:", errors);
@@ -520,9 +554,13 @@ export async function deleteLadder(id: string) {
 /**
  * Create a new player
  */
-export async function createPlayer(givenName: string, familyName: string, email: string) {
+export async function createPlayer(
+  givenName: string,
+  familyName: string,
+  email: string
+) {
   try {
-    const { data: createdPlayer, errors } = await client.models.Player.create({
+    const { data: createdPlayer, errors } = await playerClient().create({
       givenName: givenName.trim(),
       familyName: familyName.trim(),
       email: email.trim(),
@@ -544,15 +582,18 @@ export async function createPlayer(givenName: string, familyName: string, email:
 /**
  * Update player information
  */
-export async function updatePlayer(playerId: string, data: {
-  givenName?: string,
-  familyName?: string,
-  email?: string,
-}) {
+export async function updatePlayer(
+  playerId: string,
+  data: {
+    givenName?: string;
+    familyName?: string;
+    email?: string;
+  }
+) {
   try {
-    const { data: updatedPlayer, errors } = await client.models.Player.update({
+    const { data: updatedPlayer, errors } = await playerClient().update({
       id: playerId,
-      ...data
+      ...data,
     });
 
     if (errors) {
@@ -601,7 +642,10 @@ export async function canTeamJoinLadder(teamId: string, ladderId: string) {
 
     return true;
   } catch (error) {
-    console.error(`Error checking if team ${teamId} can join ladder ${ladderId}:`, error);
+    console.error(
+      `Error checking if team ${teamId} can join ladder ${ladderId}:`,
+      error
+    );
     return false;
   }
 }
@@ -611,9 +655,9 @@ export async function canTeamJoinLadder(teamId: string, ladderId: string) {
  */
 export async function getMatchesForLadder(ladderId: string) {
   try {
-    const { data: matchData, errors } = await client.models.Match.list({
+    const { data: matchData, errors } = await matchClient().list({
       filter: { ladderId: { eq: ladderId } },
-      selectionSet: ["id", "ladderId", "team1Id", "team2Id", "winnerId"]
+      selectionSet: ["id", "ladderId", "team1Id", "team2Id", "winnerId"],
     });
 
     if (errors) {
@@ -623,15 +667,18 @@ export async function getMatchesForLadder(ladderId: string) {
 
     // Ensure we only use valid match objects to prevent UI errors
     if (matchData && Array.isArray(matchData)) {
-      const validMatches = matchData.filter(match => 
-        match !== null && 
-        typeof match === 'object' &&
-        match.id &&
-        match.team1Id &&
-        match.team2Id
+      const validMatches = matchData.filter(
+        (match) =>
+          match !== null &&
+          typeof match === "object" &&
+          match.id &&
+          match.team1Id &&
+          match.team2Id
       );
-      
-      console.log(`Fetched ${validMatches.length} matches for ladder ${ladderId}`);
+
+      console.log(
+        `Fetched ${validMatches.length} matches for ladder ${ladderId}`
+      );
       return validMatches;
     } else {
       return [];
@@ -645,13 +692,18 @@ export async function getMatchesForLadder(ladderId: string) {
 /**
  * Create a new match
  */
-export async function createMatch(ladderId: string, team1Id: string, team2Id: string, winnerId?: string) {
+export async function createMatch(
+  ladderId: string,
+  team1Id: string,
+  team2Id: string,
+  winnerId?: string
+) {
   try {
-    const { data: createdMatch, errors } = await client.models.Match.create({
+    const { data: createdMatch, errors } = await matchClient().create({
       ladderId,
       team1Id,
       team2Id,
-      winnerId
+      winnerId,
     });
 
     if (errors) {
@@ -667,6 +719,10 @@ export async function createMatch(ladderId: string, team1Id: string, team2Id: st
   }
 }
 
+// TODO: export from amplify-helpers
+//
+const {models} = generateClient<Schema>();
+
 /**
  * Generic function to delete all items of a specific type
  */
@@ -675,11 +731,11 @@ export async function deleteAllItems<T extends { id: string }>({
   modelName,
 }: {
   items: T[];
-  modelName: keyof typeof client.models;
+  modelName: keyof typeof models;
 }) {
   try {
     // Handle type-safe model access
-    const model = client.models[modelName];
+    const model = models[modelName];
 
     const deletePromises = items.map(async (item) => {
       try {

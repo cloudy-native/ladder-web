@@ -4,13 +4,12 @@ import { Tooltip } from "../ui/tooltip"
 
 interface IdCellProps {
   id: string;
-  entityType: 'ladder' | 'player' | 'team';
 }
 
 /**
  * Display an entity ID in a table cell with a key icon and tooltip
  */
-export function IdCell({ id, entityType }: IdCellProps) {
+export function IdCell({ id }: IdCellProps) {
   return (
     <Table.Cell width="60px">
       <Tooltip content={id}>

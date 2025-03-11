@@ -9,7 +9,7 @@ import {
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { IoClose, IoSave } from "react-icons/io5";
-import type { Schema } from "../../../amplify/data/resource";
+import { useTeamCreate } from "../../utils/hooks";
 import {
   DialogActionTrigger,
   DialogBody,
@@ -21,31 +21,18 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Field } from "../ui/field";
-import { useTeamCreate } from "../../utils/hooks";
-
-type Player = Schema["Player"]["type"];
 
 interface CreateTeamDialogProps {
   /**
-   * Dialog is controlled externally 
+   * Dialog is controlled externally
    */
   dialog: ReturnType<typeof useDialog>;
-  
+
   /**
    * Function to call when team is successfully created
    */
   onTeamCreated: () => void;
-  
-  /**
-   * Current logged in player (if any)
-   */
-  currentPlayer: Player | null;
-  
-  /**
-   * Function to check if player is already on a team
-   */
-  isPlayerOnAnyTeam: () => boolean;
-  
+
   /**
    * Button to trigger the dialog
    */
@@ -58,25 +45,22 @@ interface CreateTeamDialogProps {
 export function CreateTeamDialog({
   dialog,
   onTeamCreated,
-  currentPlayer,
-  isPlayerOnAnyTeam,
-  triggerButton
+  triggerButton,
 }: CreateTeamDialogProps) {
   // Form state
   const [teamName, setTeamName] = useState("");
   const [initialRating, setInitialRating] = useState<string>("1200");
-  
+
   // Custom hook for team creation
-  const { createTeam, isCreating: isCreatingTeam, createError } = useTeamCreate();
+  const {
+    createTeam,
+    isCreating: isCreatingTeam,
+    createError,
+  } = useTeamCreate();
 
   async function handleCreateTeam() {
     // Determine if the current player should be added to the new team
     let player1Id = undefined;
-
-    // If there's a current player not already on a team, add them as player 1
-    if (currentPlayer && !isPlayerOnAnyTeam()) {
-      player1Id = currentPlayer.id;
-    }
 
     // Create the team
     const createdTeam = await createTeam(teamName, initialRating, player1Id);
@@ -96,9 +80,7 @@ export function CreateTeamDialog({
 
   return (
     <DialogRootProvider value={dialog}>
-      <DialogTrigger asChild>
-        {triggerButton}
-      </DialogTrigger>
+      <DialogTrigger asChild>{triggerButton}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Team</DialogTitle>
@@ -120,8 +102,7 @@ export function CreateTeamDialog({
               onChange={(e) => setInitialRating(e.target.value)}
             />
             <Text fontSize="xs" color="gray.500" mt={1}>
-              The default rating is 1200. Higher values indicate stronger
-              teams.
+              The default rating is 1200. Higher values indicate stronger teams.
             </Text>
           </Field>
 

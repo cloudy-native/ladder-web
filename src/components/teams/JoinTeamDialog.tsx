@@ -1,8 +1,8 @@
-import React from 'react';
 import {
   Alert,
   Box,
   Button,
+  DialogActionTrigger,
   DialogBody,
   DialogCloseTrigger,
   DialogContent,
@@ -10,15 +10,15 @@ import {
   DialogHeader,
   DialogRootProvider,
   DialogTitle,
-  DialogActionTrigger,
   DialogTrigger,
   Icon,
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { IoClose, IoPersonAdd, IoRemove } from "react-icons/io5";
-import { TeamWithPlayers } from '../../utils/hooks/useTeams';
-import { usePlayer, useTeamJoin } from '../../utils/hooks';
+import React from "react";
+import { IoClose } from "react-icons/io5";
+import { useTeamJoin } from "../../utils/hooks";
+import { TeamWithPlayers } from "../../utils/hooks/useTeams";
 
 interface JoinTeamDialogProps {
   team: TeamWithPlayers;
@@ -35,31 +35,7 @@ export function JoinTeamDialog({
   teams,
   trigger,
 }: JoinTeamDialogProps) {
-  const { currentPlayer, isPlayerInTeam, isPlayerOnAnyTeam } = usePlayer();
   const { joinTeam, leaveTeam, isJoining, joinError } = useTeamJoin();
-
-  const isInTeam = currentPlayer ? isPlayerInTeam(team.id, teams) : false;
-  const isOnAnyTeam = currentPlayer ? isPlayerOnAnyTeam(teams) : false;
-
-  const handleJoinTeam = async () => {
-    if (currentPlayer) {
-      const success = await joinTeam(team.id, currentPlayer, teams);
-      if (success) {
-        onTeamJoined();
-        dialogRef.setOpen(false);
-      }
-    }
-  };
-
-  const handleLeaveTeam = async () => {
-    if (currentPlayer) {
-      const success = await leaveTeam(team.id, currentPlayer);
-      if (success) {
-        onTeamJoined();
-        dialogRef.setOpen(false);
-      }
-    }
-  };
 
   return (
     <DialogRootProvider value={dialogRef}>
@@ -80,7 +56,7 @@ export function JoinTeamDialog({
           {/* Show slot information */}
           <Box mt={2}>
             <Text fontWeight="medium">Team Slots:</Text>
-            <VStack align="flex-start" mt={1} spacing={1}>
+            <VStack align="flex-start" mt={1}>
               <Text>
                 Player 1:{" "}
                 {team.player1Details
@@ -96,18 +72,6 @@ export function JoinTeamDialog({
             </VStack>
           </Box>
 
-          {/* Check if player is already on a team */}
-          {(isOnAnyTeam || isInTeam) && (
-            <Alert.Root status="warning" mt={4}>
-              <Alert.Indicator />
-              <Alert.Title>
-                {isInTeam
-                  ? "You are already a member of this team."
-                  : "You are already a member of another team. Joining this team will remove you from your current team."}
-              </Alert.Title>
-            </Alert.Root>
-          )}
-
           {joinError && (
             <Alert.Root status="error" mt={4}>
               <Alert.Indicator />
@@ -121,28 +85,6 @@ export function JoinTeamDialog({
               <Icon as={IoClose} mr={2} /> Cancel
             </Button>
           </DialogActionTrigger>
-          {isInTeam ? (
-            <Button
-              colorScheme="red"
-              onClick={handleLeaveTeam}
-              isLoading={isJoining}
-            >
-              <Icon as={IoRemove} mr={2} /> Leave Team
-            </Button>
-          ) : (
-            <Button
-              onClick={handleJoinTeam}
-              isLoading={isJoining}
-              loadingText="Joining..."
-              isDisabled={
-                isJoining ||
-                !currentPlayer ||
-                (!team.player1Id && !team.player2Id)
-              }
-            >
-              <Icon as={IoPersonAdd} mr={2} /> Join
-            </Button>
-          )}
         </DialogFooter>
         <DialogCloseTrigger />
       </DialogContent>
