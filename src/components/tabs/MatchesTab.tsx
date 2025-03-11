@@ -163,8 +163,14 @@ export function MatchesTab() {
                         collection={createListCollection({ items: ladders })}
                         size="sm"
                         width="320px"
+                        onChange={(e) => {
+                          setSelectedLadderId(e.target);
+                          // Reset team selections when ladder changes
+                          setSelectedTeam1Id("");
+                          setSelectedTeam2Id("");
+                          setSelectedWinnerId("");
+                        }}
                       >
-                        {/* <SelectLabel>Select Ladder</SelectLabel> */}
                         <SelectTrigger>
                           <SelectValueText placeholder="Select ladder" />
                         </SelectTrigger>
