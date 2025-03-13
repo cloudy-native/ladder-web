@@ -1,4 +1,4 @@
-import { ClientOnly } from './client'
+import { ClientOnly } from './client.tsx'
 
 export default function AboutPage() {
   return <ClientOnly />

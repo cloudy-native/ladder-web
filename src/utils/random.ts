@@ -1,70 +1,53 @@
-"use client";
-
+import { faker } from "@faker-js/faker";
+import * as changeCase from "change-case";
 import { Player } from "./amplify-helpers";
 
-interface NameObject {
-  givenName: string;
-  familyName: string;
+export function getRandomElement<T>(array: T[]): T {
+  if (array.length === 0) {
+    throw new Error("Cannot get a random element from an empty array.");
+  }
+  const randomIndex = Math.floor(Math.random() * array.length);
+  return array[randomIndex];
 }
 
-export function randomName(): NameObject {
-  const givenNames: string[] = [
-    "Alice",
-    "Benjamin",
-    "Charlotte",
-    "David",
-    "Emma",
-    "Frederick",
-    "Grace",
-    "Henry",
-    "Isabella",
-    "Jacob",
-  ];
+export function randomLadderName() {
+  return changeCase.capitalCase(`${faker.commerce.productAdjective()} Ladder`);
+}
 
-  const familyNames: string[] = [
-    "Anderson",
-    "Brown",
-    "Chen",
-    "Davis",
-    "Evans",
-    "Foster",
-    "Garcia",
-    "Huang",
-    "Ivanov",
-    "Johnson",
-  ];
+export function randomLadderDescription() {
+  return faker.lorem.sentence(20);
+}
 
-  // Get random indices for given name and family name
-  const randomGivenNameIndex = Math.floor(Math.random() * givenNames.length);
-  const randomFamilyNameIndex = Math.floor(Math.random() * familyNames.length);
+export function randomTeamName() {
+  return changeCase.capitalCase(
+    `${faker.food.adjective()} ${faker.food.dish()}`
+  );
+}
 
-  // Return the randomly selected name as an object
-  return {
-    givenName: givenNames[randomGivenNameIndex],
-    familyName: familyNames[randomFamilyNameIndex],
-  };
+export function randomFirstName() {
+  return faker.person.firstName();
+}
+
+export function randomLastName() {
+  return faker.person.lastName();
+}
+
+export function randomEmail(firstName: string, lastName: string) {
+  return faker.internet.email({ firstName, lastName }).toLowerCase();
+}
+
+export function randomAvatar() {
+  return faker.image.avatar();
+}
+
+export function randomRating(min: number, max: number) {
+  return faker.number.int({ min, max });
+}
+
+export function randomRecentDate(days: number) {
+  return faker.date.recent({ days });
 }
 
 export function nameFor(player: Player) {
   return `${player.givenName} ${player.familyName}`;
-}
-
-// Assume < max possible
-//
-export function uniqueRandomNames(count: number): NameObject[] {
-  const result: NameObject[] = [];
-  const usedCombinations = new Set<string>();
-
-  while (result.length < count) {
-    const name = randomName();
-    const combinationKey = JSON.stringify(name);
-
-    if (!usedCombinations.has(combinationKey)) {
-      usedCombinations.add(combinationKey);
-
-      result.push(name);
-    }
-  }
-
-  return result;
 }

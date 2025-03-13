@@ -60,10 +60,10 @@ export function CreateTeamDialog({
 
   async function handleCreateTeam() {
     // Determine if the current player should be added to the new team
-    let player1Id = undefined;
+    // let player1Id = undefined; // TODO: this will be the currently authenticated player
 
     // Create the team
-    const createdTeam = await createTeam(teamName, initialRating, player1Id);
+    const createdTeam = await createTeam(teamName, initialRating, undefined);
 
     if (createdTeam) {
       // Reset form fields

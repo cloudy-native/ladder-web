@@ -80,7 +80,7 @@ export function useLadderSelect() {
             typeof ladder === "object" &&
             ladder.id &&
             ladder.name
-        );
+        ) as Ladder[];
 
         // Sort by name for better user experience
         validLadders.sort((a, b) => a.name.localeCompare(b.name));
@@ -104,7 +104,7 @@ export function useLadderSelect() {
 
   // Helper functions for ladder operations
   const isTeamInLadder = useCallback(
-    (teamId: string, ladderId: string, teams: any[]) => {
+    (teamId: string, ladderId: string, teams: Team[]) => {
       const team = teams.find((team) => team.id === teamId);
       return team?.ladderId === ladderId;
     },

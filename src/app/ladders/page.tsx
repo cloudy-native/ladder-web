@@ -1,4 +1,4 @@
-import { ClientOnly } from '../ladders/client'
+import { ClientOnly } from './client.tsx'
 
 export default function LaddersPage() {
   return <ClientOnly />

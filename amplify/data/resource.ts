@@ -1,27 +1,27 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
 /**
-  +------------+          +-----------+
-  |   Ladder   |          |   Team    |
-  +------------+          +-----------+
-  | name       |          | name      |
-  | description|          | ladderId  | (1:1)
-  +------------+          | player1Id | (1:1)
-        |                 | player2Id | (1:1)
-        |                 +-----------+
-        |                      |
-        +-1------many----------+
-                              / \
-                             /   \
-                            /     \
-               +-----------+       +-----------+
-               |  Player1  |       |  Player2  |
-               +-----------+       +-----------+
-               | givenName |       | givenName |
-               | familyName|       | familyName|
-               | email     |       | email     |
-               +-----------+       +-----------+
- */
+  +------------+          +-----------+          +-----------+
+  |   Ladder   |          |   Team    |          |   Match   |
+  +------------+          +-----------+          +-----------+
+  | name       |<-1---n->| name      |<-1---n->| ladderId  |
+  | description|          | ladderId  |          | team1Id   |
+  +------------+          | player1Id |          | team2Id   |
+                          | player2Id |          | winnerId  |
+                          | rating    |          | playedOn  |
+                          +-----------+          +-----------+
+                                |
+                                |
+                          +-----------+
+                          |  Player   |
+                          +-----------+
+                          | givenName |
+                          | familyName|
+                          | email     |
+                          | phone     |
+                          | avatar    |
+                          +-----------+
+  */
 
 const schema = a
   .schema({
@@ -34,7 +34,7 @@ const schema = a
       createdAt: a.string(),
       updatedAt: a.string(),
     }),
-    
+
     /* A team can only be on one ladder and has exactly 2 player slots. */
     Team: a.model({
       name: a.string().required(),
@@ -75,7 +75,7 @@ const schema = a
       team2: a.belongsTo("Team", "team2Id"),
       winnerId: a.id(),
       winner: a.belongsTo("Team", "winnerId"),
-      date: a.string(),
+      playedOn: a.string(),
       createdAt: a.string(),
       updatedAt: a.string(),
     }),

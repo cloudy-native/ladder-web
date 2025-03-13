@@ -5,6 +5,8 @@ import { isPromise } from "../../utils/amplify-helpers";
 /**
  * Generic component to handle fetching and displaying relation data
  */
+// TODO: errors is GraphQLFormattedError
+//
 interface RelationCellProps<T> {
   fetchRelation: () =>
     | Promise<{ data?: T | null; errors?: any[] }>
@@ -39,6 +41,8 @@ export function RelationCell<T>({
       try {
         const result = stableFetchRelation();
 
+        // TODO: errors is GraphQLFormattedError
+        //
         if (isPromise<{ data?: T | null; errors?: any[] }>(result)) {
           const response = await result;
           if (!isMounted) return;
@@ -154,6 +158,8 @@ export function RelationData<T>({
       try {
         const result = stableFetchRelation();
 
+        // TODO: errors is of type GraphQLFormattedError, but that's not easy to import
+        // 
         if (isPromise<{ data?: T | null; errors?: any[] }>(result)) {
           const response = await result;
           if (!isMounted) return;

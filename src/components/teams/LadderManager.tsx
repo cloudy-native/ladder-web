@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { RefObject } from "react";
 import {
   Alert,
   Box,
@@ -19,13 +19,13 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { IoAdd, IoRemove } from "react-icons/io5";
-import { useLadderSelect } from '../../utils/hooks';
-import { useTeamLadder } from '../../utils/hooks';
-import { TeamWithPlayers } from '../../utils/hooks/useTeams';
+import { useLadderSelect } from "../../utils/hooks";
+import { useTeamLadder } from "../../utils/hooks";
+import { TeamWithPlayers } from "../../utils/hooks/useTeams";
 
 interface LadderManagerProps {
   team: TeamWithPlayers;
-  dialogRef: any;
+  dialogRef: RefObject<HTMLDivElement>;
   onLadderChanged: () => void;
   trigger?: React.ReactNode;
 }
@@ -36,20 +36,11 @@ export function LadderManager({
   onLadderChanged,
   trigger,
 }: LadderManagerProps) {
-  const {
-    ladders,
-    loading,
-    error,
-    isTeamInLadder,
-    refreshLadders,
-  } = useLadderSelect();
+  const { ladders, loading, error, isTeamInLadder, refreshLadders } =
+    useLadderSelect();
 
-  const {
-    addTeamToLadder,
-    removeTeamFromLadder,
-    isUpdating,
-    updateError,
-  } = useTeamLadder();
+  const { addTeamToLadder, removeTeamFromLadder, isUpdating, updateError } =
+    useTeamLadder();
 
   // Handle adding team to ladder
   const handleAddToLadder = async (ladderId: string) => {
@@ -72,9 +63,7 @@ export function LadderManager({
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {`Manage "${team.name}" Ladder`}
-          </DialogTitle>
+          <DialogTitle>{`Manage "${team.name}" Ladder`}</DialogTitle>
         </DialogHeader>
         <DialogBody>
           {loading ? (
@@ -139,7 +128,7 @@ export function LadderManager({
                             <Button
                               size="sm"
                               colorScheme="red"
-                              isLoading={isUpdating}
+                              loading={isUpdating}
                               onClick={handleRemoveFromLadder}
                             >
                               <IoRemove />
@@ -149,9 +138,9 @@ export function LadderManager({
                             <Button
                               size="sm"
                               colorScheme="blue"
-                              isLoading={isUpdating}
+                              loading={isUpdating}
                               onClick={() => handleAddToLadder(ladder.id)}
-                              isDisabled={
+                              disabled={
                                 team.ladderId !== null &&
                                 team.ladderId !== undefined
                               }

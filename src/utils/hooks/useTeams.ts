@@ -489,7 +489,7 @@ export function useTeamLadder() {
     setIsUpdating(true);
 
     try {
-      const { data: updatedTeam, errors } = await teamClient().update({
+      const {  errors } = await teamClient().update({
         id: teamId,
         ladderId: null, // Remove the ladder association
       });

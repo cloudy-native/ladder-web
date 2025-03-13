@@ -1,8 +1,26 @@
 "use client";
 
-import { Box, Container, Flex, Heading, Icon, SimpleGrid, Text, VStack } from "@chakra-ui/react";
+import {
+  CardBody,
+  CardHeader,
+  CardRoot,
+  Container,
+  Flex,
+  Heading,
+  Icon,
+  Link,
+  SimpleGrid,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 import NextLink from "next/link";
-import { IoAnalytics, IoPeople, IoPerson, IoSettingsSharp, IoTrophy } from "react-icons/io5";
+import {
+  IoAnalytics,
+  IoPeople,
+  IoPerson,
+  IoSettingsSharp,
+  IoTrophy,
+} from "react-icons/io5";
 
 export function ClientOnly() {
   const features = [
@@ -40,7 +58,7 @@ export function ClientOnly() {
 
   return (
     <Container maxW="container.lg">
-      <VStack spacing={8} align="center" mb={12}>
+      <VStack align="center" mb={12}>
         <Heading as="h1" size="2xl">
           Welcome to Ladder Web
         </Heading>
@@ -49,26 +67,22 @@ export function ClientOnly() {
         </Text>
       </VStack>
 
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={8}>
+      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
         {features.map((feature) => (
-          <Box
-            key={feature.title}
-            as={NextLink}
-            href={feature.href}
-            borderWidth={1}
-            borderRadius="lg"
-            p={6}
-            transition="all 0.3s"
-            _hover={{ transform: "translateY(-5px)", boxShadow: "md" }}
-          >
-            <Flex direction="column" align="center" textAlign="center">
-              <Icon as={feature.icon} w={10} h={10} mb={4} />
-              <Heading as="h3" size="md" mb={2}>
-                {feature.title}
-              </Heading>
-              <Text>{feature.description}</Text>
-            </Flex>
-          </Box>
+          <CardRoot key={feature.title}>
+            <CardHeader>{feature.title}</CardHeader>
+            <CardBody>
+              <Link as={NextLink} href={feature.href} key={feature.title}>
+                <Flex direction="column" align="center" textAlign="center">
+                  <Icon as={feature.icon} w={10} h={10} mb={4} />
+                  <Heading as="h3" size="md" mb={2}>
+                    {feature.title}
+                  </Heading>
+                  <Text>{feature.description}</Text>
+                </Flex>
+              </Link>
+            </CardBody>
+          </CardRoot>
         ))}
       </SimpleGrid>
     </Container>

@@ -1,5 +1,5 @@
-import { ClientOnly } from '../matches/client'
+import { ClientOnly } from './client.tsx'
 
-export default function MatchesPage() {
+export default function LaddersPage() {
   return <ClientOnly />
 }

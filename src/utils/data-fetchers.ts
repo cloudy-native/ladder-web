@@ -1,6 +1,5 @@
 "use client";
 
-import { Schema } from "../../amplify/data/resource";
 import {
   getClient,
   ladderClient,
@@ -724,7 +723,6 @@ export async function createMatch(
   }
 }
 
-
 /**
  * Generic function to delete all items of a specific type
  */
@@ -740,10 +738,10 @@ export async function deleteAllItems<T extends { id: string }>({
       console.log(`No ${String(modelName)}s to delete`);
       return true;
     }
-    
+
     // Get client models
     const models = getClient().models;
-    
+
     // Handle type-safe model access
     const model = models[modelName];
 
@@ -751,34 +749,41 @@ export async function deleteAllItems<T extends { id: string }>({
     const batchSize = 10;
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
-      console.log(`Deleting ${batch.length} ${String(modelName)}s (batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(items.length/batchSize)})`);
-      
+      console.log(
+        `Deleting ${batch.length} ${String(modelName)}s (batch ${
+          Math.floor(i / batchSize) + 1
+        }/${Math.ceil(items.length / batchSize)})`
+      );
+
       const deletePromises = batch.map(async (item) => {
         try {
           // Use the correct client based on the model name
           let client;
-          switch(modelName) {
-            case 'Ladder':
+          switch (modelName) {
+            case "Ladder":
               client = ladderClient();
               break;
-            case 'Match':
+            case "Match":
               client = matchClient();
               break;
-            case 'Player':
+            case "Player":
               client = playerClient();
               break;
-            case 'Team':
+            case "Team":
               client = teamClient();
               break;
             default:
               // Fallback to using the model directly
               client = model;
           }
-          
+
           const response = await client.delete({ id: item.id });
 
           if (response.errors) {
-            console.error(`Error deleting ${String(modelName)} ${item.id}:`, response.errors);
+            console.error(
+              `Error deleting ${String(modelName)} ${item.id}:`,
+              response.errors
+            );
             throw new Error(`Failed to delete ${String(modelName)} ${item.id}`);
           }
         } catch (err) {
@@ -789,7 +794,7 @@ export async function deleteAllItems<T extends { id: string }>({
 
       await Promise.all(deletePromises);
     }
-    
+
     console.log(`All ${String(modelName)}s successfully deleted`);
     return true;
   } catch (error) {

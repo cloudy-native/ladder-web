@@ -35,7 +35,7 @@ export function useMatchList() {
           "team1Id",
           "team2Id",
           "winnerId",
-          "createdAt",
+          "playedOn",
         ],
       });
 
@@ -312,24 +312,31 @@ export function useMatchCreate() {
 
       // Validate input
       if (!ladderId || !team1Id || !team2Id) {
+        console.error("Validation failed:", { ladderId, team1Id, team2Id });
         setCreateError("Ladder and both teams are required");
         return null;
       }
 
       if (team1Id === team2Id) {
+        console.error("Teams are the same:", team1Id);
         setCreateError("Teams must be different");
         return null;
       }
 
       setIsCreating(true);
+      console.log("Creating match with params:", { ladderId, team1Id, team2Id, winnerId });
 
       try {
-        const { data: createdMatch, errors } = await matchClient().create({
+        console.log("About to call matchClient().create()");
+        const createResult = await matchClient().create({
           ladderId,
           team1Id,
           team2Id,
           winnerId: winnerId || undefined,
         });
+        console.log("matchClient().create() result:", createResult);
+
+        const { data: createdMatch, errors } = createResult;
 
         if (errors) {
           console.error("Error creating match:", errors);
@@ -342,6 +349,7 @@ export function useMatchCreate() {
         // If we have a winner, update ratings
         if (winnerId) {
           try {
+            console.log("Updating ratings for winner:", winnerId);
             await updateRatings(team1Id, team2Id, winnerId);
           } catch (error) {
             console.error("Error updating ratings:", error);
