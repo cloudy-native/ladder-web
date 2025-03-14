@@ -60,7 +60,6 @@ export function ClientOnly() {
 
   return (
     <Container maxW="container.lg" py={12}>
-      {/* Welcome Header */}
       <VStack align="center" mb={12}>
         <Heading as="h1" size="2xl" textAlign="center">
           Welcome to Ladder Web

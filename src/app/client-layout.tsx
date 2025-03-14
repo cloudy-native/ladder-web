@@ -54,7 +54,7 @@ function AuthenticatedContent({
   authenticatedPages: string[];
   pathname: string;
 }) {
-  const { route } = useAuthenticator((context) => [context.route]);
+  // const { route } = useAuthenticator((context) => [context.route]);
   const isAuthPage = authenticatedPages.some((page) => pathname === page);
   return isAuthPage ? (
     <Authenticator

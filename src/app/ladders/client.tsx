@@ -14,12 +14,12 @@ import {
   Input,
   Spinner,
   Table,
+  Tabs,
   Text,
   useDialog,
-  VStack,
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
-import { IoAddCircle, IoClose, IoRefresh, IoTrash } from "react-icons/io5";
+import { IoAddCircle, IoClose, IoRefresh } from "react-icons/io5";
 import {
   DialogActionTrigger,
   DialogBody,
@@ -38,6 +38,7 @@ import {
   useLadderDelete,
   useLadderList,
   useTeamsForLadder,
+  useMatchesForLadder
 } from "../../utils/hooks";
 
 export function ClientOnly() {
@@ -48,60 +49,6 @@ export function ClientOnly() {
       </Heading>
       <LaddersPage />
     </Container>
-  );
-}
-
-// Component to display teams in a ladder as a table sorted by rating
-function TeamsDisplay({ ladder }: { ladder: Ladder }) {
-  const { teamsWithPlayers, loading, error } = useTeamsForLadder(ladder.id);
-
-  if (loading) return <Text fontSize="sm">Loading teams...</Text>;
-  if (error)
-    return (
-      <Text fontSize="sm" color="red.500">
-        Error loading teams
-      </Text>
-    );
-  if (teamsWithPlayers.length === 0)
-    return <Text fontSize="sm">No teams in this ladder</Text>;
-
-  // Format player names
-  function formatPlayers(players?: Player[]) {
-    if (!players || players.length === 0) return "—";
-
-    return players
-      .map((player) => `${player.givenName} ${player.familyName}`)
-      .join(", ");
-  }
-
-  return (
-    <Box>
-      <Text fontSize="sm" fontWeight="medium" mb={3}>
-        {teamsWithPlayers.length} team{teamsWithPlayers.length !== 1 ? "s" : ""}{" "}
-        in ladder:
-      </Text>
-
-      <Table.Root size="sm">
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeader width="40px">#</Table.ColumnHeader>
-            <Table.ColumnHeader>Team</Table.ColumnHeader>
-            <Table.ColumnHeader>Players</Table.ColumnHeader>
-            <Table.ColumnHeader>Rating</Table.ColumnHeader>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {teamsWithPlayers.map((team, index) => (
-            <Table.Row key={team.id}>
-              <Table.Cell fontWeight="medium">{index + 1}</Table.Cell>
-              <Table.Cell fontWeight="medium">{team.name}</Table.Cell>
-              <Table.Cell>{formatPlayers(team.playersList)}</Table.Cell>
-              <Table.Cell fontWeight="medium">{team.rating}</Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
-    </Box>
   );
 }
 
@@ -178,6 +125,15 @@ function LaddersPage() {
     refreshLadders();
     clearFilter();
   };
+
+  // Format player names
+  function formatPlayers(players?: Player[]) {
+    if (!players || players.length === 0) return "—";
+
+    return players
+      .map((player) => `${player.givenName} ${player.familyName}`)
+      .join(", ");
+  }
 
   return (
     <Box>
@@ -305,45 +261,144 @@ function LaddersPage() {
           </Alert.Description>
         </Alert.Root>
       ) : (
-        <VStack align="stretch">
+        <Tabs.Root defaultValue={filteredLadders[0].id}>
+          <Tabs.List>
+            {filteredLadders.map((ladder) => (
+              <Tabs.Trigger value={ladder.id}>{ladder.name}</Tabs.Trigger>
+            ))}
+          </Tabs.List>
+
           {filteredLadders.map((ladder) => (
-            <Card.Root key={ladder.id}>
-              <Card.Header>
-                <HStack justifyContent="space-between" width="100%">
-                  <Box>
-                    <Text fontWeight="bold" fontSize="xl">
-                      {ladder.name}
-                    </Text>
-                    {ladder.description && (
-                      <Text color="gray.600">{ladder.description}</Text>
+            <Tabs.Content value={ladder.id}>
+              <Card.Root>
+                <Card.Header>
+                  <HStack justifyContent="space-between" width="100%">
+                    <Box>
+                      <Text fontWeight="bold" fontSize="xl">
+                        {ladder.name}
+                      </Text>
+                      {ladder.description && (
+                        <Text color="gray.600">{ladder.description}</Text>
+                      )}
+                    </Box>
+
+                    {deleteError[ladder.id] && (
+                      <Alert.Root status="error" mt={3} size="sm">
+                        <Alert.Indicator />
+                        <Alert.Title>{deleteError[ladder.id]}</Alert.Title>
+                      </Alert.Root>
                     )}
-                  </Box>
-                </HStack>
-              </Card.Header>
-              <Card.Body>
-                <Box mt={2} mb={2} overflowX="auto">
-                  <TeamsDisplay ladder={ladder} />
-                </Box>
-
-                {ladder.createdAt && (
-                  <HStack fontSize="sm" color="gray.500" mt={4}>
-                    <Text>
-                      Created: {new Date(ladder.createdAt).toLocaleDateString()}
-                    </Text>
                   </HStack>
-                )}
-
-                {deleteError[ladder.id] && (
-                  <Alert.Root status="error" mt={3} size="sm">
-                    <Alert.Indicator />
-                    <Alert.Title>{deleteError[ladder.id]}</Alert.Title>
-                  </Alert.Root>
-                )}
-              </Card.Body>
-            </Card.Root>
+                </Card.Header>
+                <Card.Body>
+                  <TeamsInLadderTable
+                    ladder={ladder}
+                    formatPlayers={formatPlayers}
+                  />
+                </Card.Body>
+              </Card.Root>
+            </Tabs.Content>
           ))}
-        </VStack>
+        </Tabs.Root>
       )}
+    </Box>
+  );
+}
+
+// Component to display teams in a ladder as a table sorted by rating
+function TeamsInLadderTable({
+  ladder,
+  formatPlayers,
+}: {
+  ladder: Ladder;
+  formatPlayers: (players?: Player[]) => string;
+}) {
+  const {
+    teamsWithPlayers,
+    loading: loadingTeams,
+    error: errorTeams,
+  } = useTeamsForLadder(ladder.id);
+  const {
+    matches,
+    loading: loadingMatches,
+    error: errorMatches,
+  } = useMatchesForLadder(ladder.id);
+
+  if (loadingTeams) return <Text fontSize="sm">Loading teams...</Text>;
+  if (loadingMatches) return <Text fontSize="sm">Loading matches...</Text>;
+
+  if (errorTeams)
+    return (
+      <Text fontSize="sm" color="red.500">
+        Error loading teams
+      </Text>
+    );
+  if (errorMatches)
+    return (
+      <Text fontSize="sm" color="red.500">
+        Error loading matches
+      </Text>
+    );
+  if (teamsWithPlayers.length === 0)
+    return <Text fontSize="sm">No teams in this ladder</Text>;
+
+  return (
+    <Box>
+      <Tabs.Root defaultValue={"teams"}>
+        <Tabs.List>
+          <Tabs.Trigger value="teams">Teams</Tabs.Trigger>
+          <Tabs.Trigger value="matches">Matches</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="teams">
+          <Text fontSize="sm"  mb={3}>
+            {teamsWithPlayers.length} team
+            {teamsWithPlayers.length !== 1 ? "s" : ""} in ladder:
+          </Text>
+
+          <Table.Root size="sm">
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader width="40px">#</Table.ColumnHeader>
+                <Table.ColumnHeader>Team</Table.ColumnHeader>
+                <Table.ColumnHeader>Players</Table.ColumnHeader>
+                <Table.ColumnHeader>Rating</Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {teamsWithPlayers.map((team, index) => (
+                <Table.Row key={team.id}>
+                  <Table.Cell >{index + 1}</Table.Cell>
+                  <Table.Cell >{team.name}</Table.Cell>
+                  <Table.Cell>{formatPlayers(team.playersList)}</Table.Cell>
+                  <Table.Cell >{team.rating}</Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table.Root>
+        </Tabs.Content>
+        <Tabs.Content value="matches">
+          <Table.Root size="sm">
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader width="40px">#</Table.ColumnHeader>
+                <Table.ColumnHeader>Team 1</Table.ColumnHeader>
+                <Table.ColumnHeader>Team 2</Table.ColumnHeader>
+                <Table.ColumnHeader>Winner</Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {matches.map((match, index) => (
+                <Table.Row key={match.id}>
+                  <Table.Cell >{index + 1}</Table.Cell>
+                  <Table.Cell >{match?.team1Details?.name}</Table.Cell>
+                  <Table.Cell >{match?.team2Details?.name}</Table.Cell>
+                  <Table.Cell >{match?.winnerDetails?.name}</Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table.Root>
+        </Tabs.Content>
+      </Tabs.Root>
     </Box>
   );
 }
