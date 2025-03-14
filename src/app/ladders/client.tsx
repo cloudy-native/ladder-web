@@ -43,7 +43,7 @@ import {
 export function ClientOnly() {
   return (
     <Container maxW="container.lg">
-      <Heading as="h1" mb={6}>
+      <Heading as="h1" m={6}>
         Ladders
       </Heading>
       <LaddersPage />
@@ -318,15 +318,6 @@ function LaddersPage() {
                       <Text color="gray.600">{ladder.description}</Text>
                     )}
                   </Box>
-                  <Button
-                    variant="ghost"
-                    onClick={() => confirmDeleteLadder(ladder)}
-                    aria-label="Delete ladder"
-                    size="sm"
-                    loading={deletingLadders[ladder.id]}
-                  >
-                    <Icon as={IoTrash} />
-                  </Button>
                 </HStack>
               </Card.Header>
               <Card.Body>

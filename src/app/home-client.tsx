@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Box,
+  Card,
   CardBody,
   CardHeader,
   CardRoot,
@@ -57,31 +59,44 @@ export function ClientOnly() {
   ];
 
   return (
-    <Container maxW="container.lg">
+    <Container maxW="container.lg" py={12}>
+      {/* Welcome Header */}
       <VStack align="center" mb={12}>
-        <Heading as="h1" size="2xl">
+        <Heading as="h1" size="2xl" textAlign="center">
           Welcome to Ladder Web
         </Heading>
-        <Text fontSize="lg" textAlign="center">
-          A platform for managing competitive ladders and tournaments
+        <Text fontSize="lg" textAlign="center" color="gray.600">
+          A platform for managing competitive ladders and tournaments.
         </Text>
       </VStack>
 
+      {/* Feature Cards */}
       <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
         {features.map((feature) => (
-          <CardRoot key={feature.title}>
-            <CardHeader>{feature.title}</CardHeader>
-            <CardBody>
-              <Link as={NextLink} href={feature.href} key={feature.title}>
+          <CardRoot
+            key={feature.title}
+            boxShadow="md"
+            transition="all 0.2s"
+            _hover={{
+              transform: "translateY(-2px)",
+            }}
+            borderRadius="lg"
+          >
+            <Link as={NextLink} href={feature.href} _hover={{ textDecoration: "none" }} >
+              <CardHeader p={4}>
                 <Flex direction="column" align="center" textAlign="center">
-                  <Icon as={feature.icon} w={10} h={10} mb={4} />
+                  <Icon as={feature.icon} w={10} h={10} mb={4} color="blue.500" />
                   <Heading as="h3" size="md" mb={2}>
                     {feature.title}
                   </Heading>
-                  <Text>{feature.description}</Text>
                 </Flex>
-              </Link>
-            </CardBody>
+              </CardHeader>
+              <CardBody>
+                <Box textAlign="center">
+                  <Text color="gray.700">{feature.description}</Text>
+                </Box>
+              </CardBody>
+            </Link>
           </CardRoot>
         ))}
       </SimpleGrid>

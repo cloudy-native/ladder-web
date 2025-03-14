@@ -9,13 +9,14 @@ import {
   Heading,
   Icon,
   Spacer,
+  Spinner,
   Table,
   Text,
   VStack,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { IoBeaker, IoRefresh, IoTrash, IoTrophy } from "react-icons/io5";
-import { EntityCard, IdCell, RelationTableCell } from "../../components/admin";
+import { EntityCard, IdCell } from "../../components/admin";
 import {
   Ladder,
   Match,
@@ -35,7 +36,7 @@ import { formatDate } from "@/utils/dates";
 export function ClientOnly() {
   return (
     <Container maxW="container.lg">
-      <Heading as="h1" mb={6}>
+      <Heading as="h1" m={6}>
         Settings
       </Heading>
       <AdminPage />
@@ -326,238 +327,442 @@ function AdminPage() {
     }
   }
 
-  function TeamsForPlayer1TableCell({ player }: { player: Player }) {
-    return (
-      <RelationTableCell<Player, Team>
-        entity={player}
-        dependencyKey={player.id}
-        fetchRelation={async () => {
-          const result = await teamClient().list({
-            filter: { player1Id: { eq: player.id } },
-            selectionSet: ["id", "name", "rating", "ladderId"],
+  function TeamsForPlayerTableCell({
+    player,
+    playerType,
+  }: {
+    player: Player;
+    playerType: "player1Id" | "player2Id";
+  }) {
+    const [team, setTeam] = useState<Team | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+      const fetchTeam = async () => {
+        setLoading(true);
+        setError(null);
+        setTeam(null);
+
+        try {
+          const { data, errors } = await teamClient().list({
+            filter: { [playerType]: { eq: player.id } }, // Use dynamic key
           });
 
-          if (result.errors) {
-            throw new Error("Error fetching team");
+          if (errors) {
+            console.error(`Error fetching team for ${playerType}:`, errors);
+            setError("Failed to load team");
+            return;
           }
 
-          return result.data?.[0] || null;
-        }}
-        renderContent={(team) => (
-          <Text>{team && "name" in team && team.name ? team.name : "—"}</Text>
-        )}
-      />
-    );
-  }
-
-  function TeamsForPlayer2TableCell({ player }: { player: Player }) {
-    return (
-      <RelationTableCell<Player, Team>
-        entity={player}
-        dependencyKey={player.id}
-        fetchRelation={async () => {
-          const result = await teamClient().list({
-            filter: { player2Id: { eq: player.id } },
-            selectionSet: ["id", "name", "rating", "ladderId"],
-          });
-
-          if (result.errors) {
-            throw new Error("Error fetching team");
+          // Check if there are any teams
+          if (data && data.length > 0) {
+            // A player can only be in one team as player 1 or 2
+            setTeam(data[0]);
+          } else {
+            setTeam(null);
           }
+        } catch (err) {
+          console.error(
+            `Unexpected error fetching team for ${playerType}:`,
+            err
+          );
+          setError("An unexpected error occurred");
+        } finally {
+          setLoading(false);
+        }
+      };
 
-          return result.data?.[0] || null;
-        }}
-        renderContent={(team) => (
-          <Text>{team && "name" in team ? team.name : "—"}</Text>
-        )}
-      />
-    );
+      fetchTeam();
+    }, [player.id, playerType]);
+
+    if (loading) {
+      return (
+        <Table.Cell>
+          <Spinner size="sm" />
+        </Table.Cell>
+      );
+    }
+
+    if (error) {
+      return (
+        <Table.Cell color="red.500">
+          <Text>{error}</Text>
+        </Table.Cell>
+      );
+    }
+
+    return <Table.Cell>{team ? team.name : "—"}</Table.Cell>;
   }
 
   function PlayersForTeamTableCell({ team }: { team: Team }) {
-    return (
-      <RelationTableCell<Team, Player[]>
-        entity={team}
-        dependencyKey={[team.id, team.player1Id || "", team.player2Id || ""]}
-        fetchRelation={async () => {
+    const [players, setPlayers] = useState<Player[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+      const fetchPlayers = async () => {
+        setLoading(true);
+        setError(null);
+        setPlayers([]);
+
+        try {
           const results = await Promise.all([
             // If player1Id exists, fetch player1
             team.player1Id
               ? playerClient().get({ id: team.player1Id })
-              : Promise.resolve({ data: null, errors: null }),
+              : Promise.resolve(null),
 
             // If player2Id exists, fetch player2
             team.player2Id
               ? playerClient().get({ id: team.player2Id })
-              : Promise.resolve({ data: null, errors: null }),
+              : Promise.resolve(null),
           ]);
 
-          const [player1Result, player2Result] = results;
-          const playerList: Player[] = [];
+          const fetchedPlayers: Player[] = [];
 
-          if (player1Result.data) {
-            playerList.push(player1Result.data);
+          if (results[0] && results[0].data) {
+            fetchedPlayers.push(results[0].data);
           }
 
-          if (player2Result.data) {
-            playerList.push(player2Result.data);
+          if (results[1] && results[1].data) {
+            fetchedPlayers.push(results[1].data);
           }
 
-          return playerList;
-        }}
-        renderContent={(players) => (
-          <Text>
-            {Array.isArray(players) && players.length > 0
-              ? players.map((p) => nameFor(p)).join(", ")
-              : "—"}
-          </Text>
-        )}
-      />
+          setPlayers(fetchedPlayers);
+        } catch (err) {
+          console.error("Error fetching players for team:", err);
+          setError("Failed to load players");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchPlayers();
+    }, [team.id, team.player1Id, team.player2Id]);
+
+    if (loading) {
+      return (
+        <Table.Cell>
+          <Spinner size="sm" />
+        </Table.Cell>
+      );
+    }
+
+    if (error) {
+      return (
+        <Table.Cell color="red.500">
+          <Text>{error}</Text>
+        </Table.Cell>
+      );
+    }
+
+    return (
+      <Table.Cell>
+        {players.length > 0 ? players.map((p) => nameFor(p)).join(", ") : "—"}
+      </Table.Cell>
     );
   }
 
   function TeamsForLadderTableCell({ ladder }: { ladder: Ladder }) {
-    return (
-      <RelationTableCell<Ladder, Team[]>
-        entity={ladder}
-        dependencyKey={ladder.id}
-        fetchRelation={async () => {
-          const result = await teamClient().list({
+    const [teams, setTeams] = useState<Team[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+      const fetchTeams = async () => {
+        setLoading(true);
+        setError(null);
+        setTeams([]);
+
+        try {
+          const { data, errors } = await teamClient().list({
             filter: { ladderId: { eq: ladder.id } },
-            selectionSet: ["id", "name"],
           });
 
-          if (result.errors) {
-            throw new Error("Error fetching teams for ladder");
+          if (errors) {
+            console.error("Error fetching teams for ladder:", errors);
+            setError("Failed to load teams");
+            return;
           }
 
-          return result.data || [];
-        }}
-        renderContent={(teams) => (
-          <Text>
-            {Array.isArray(teams) && teams.length > 0
-              ? teams.map((team) => team.name).join(", ")
-              : "—"}
-          </Text>
-        )}
-      />
+          setTeams(data || []);
+        } catch (err) {
+          console.error("Unexpected error fetching teams for ladder:", err);
+          setError("An unexpected error occurred");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchTeams();
+    }, [ladder.id]);
+
+    if (loading) {
+      return (
+        <Table.Cell>
+          <Spinner size="sm" />
+        </Table.Cell>
+      );
+    }
+
+    if (error) {
+      return (
+        <Table.Cell color="red.500">
+          <Text>{error}</Text>
+        </Table.Cell>
+      );
+    }
+
+    return (
+      <Table.Cell>
+        {teams.length > 0 ? teams.map((team) => team.name).join(", ") : "—"}
+      </Table.Cell>
     );
   }
 
   function LadderForTeamTableCell({ team }: { team: Team }) {
-    return (
-      <RelationTableCell<Team, Ladder>
-        entity={team}
-        dependencyKey={team.ladderId || ""}
-        fetchRelation={async () => {
-          if (!team.ladderId) {
-            return null;
-          }
+    const [ladder, setLadder] = useState<Ladder | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-          const result = await ladderClient().get({
+    useEffect(() => {
+      const fetchLadder = async () => {
+        setLoading(true);
+        setError(null);
+        setLadder(null);
+
+        if (!team.ladderId) {
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const { data, errors } = await ladderClient().get({
             id: team.ladderId,
           });
 
-          if (result.errors) {
-            throw new Error("Error fetching ladder for team");
+          if (errors) {
+            console.error("Error fetching ladder for team:", errors);
+            setError("Failed to load ladder");
+            return;
           }
 
-          return result.data;
-        }}
-        renderContent={(ladder) => (
-          <Text>{ladder && "name" in ladder ? ladder.name : "—"}</Text>
-        )}
-      />
-    );
+          setLadder(data || null);
+        } catch (err) {
+          console.error("Unexpected error fetching ladder for team:", err);
+          setError("An unexpected error occurred");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchLadder();
+    }, [team.ladderId]);
+
+    if (loading) {
+      return (
+        <Table.Cell>
+          <Spinner size="sm" />
+        </Table.Cell>
+      );
+    }
+
+    if (error) {
+      return (
+        <Table.Cell color="red.500">
+          <Text>{error}</Text>
+        </Table.Cell>
+      );
+    }
+
+    return <Table.Cell>{ladder ? ladder.name : "—"}</Table.Cell>;
   }
 
   function TeamNameTableCell({ teamId }: { teamId: string }) {
-    return (
-      <RelationTableCell<{ id: string }, Team>
-        entity={{ id: teamId }}
-        dependencyKey={teamId}
-        fetchRelation={async () => {
-          if (!teamId) {
-            return null;
-          }
+    const [team, setTeam] = useState<Team | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-          const result = await teamClient().get({
+    useEffect(() => {
+      const fetchTeam = async () => {
+        setLoading(true);
+        setError(null);
+        setTeam(null);
+
+        if (!teamId) {
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const { data, errors } = await teamClient().get({
             id: teamId,
           });
 
-          if (result.errors) {
-            throw new Error("Error fetching team");
+          if (errors) {
+            console.error("Error fetching team:", errors);
+            setError("Failed to load team");
+            return;
           }
 
-          return result.data;
-        }}
-        renderContent={(team) => (
-          <Text>{team && "name" in team ? team.name : "—"}</Text>
-        )}
-      />
-    );
+          setTeam(data || null);
+        } catch (err) {
+          console.error("Unexpected error fetching team:", err);
+          setError("An unexpected error occurred");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchTeam();
+    }, [teamId]);
+
+    if (loading) {
+      return (
+        <Table.Cell>
+          <Spinner size="sm" />
+        </Table.Cell>
+      );
+    }
+
+    if (error) {
+      return (
+        <Table.Cell color="red.500">
+          <Text>{error}</Text>
+        </Table.Cell>
+      );
+    }
+
+    return <Table.Cell>{team ? team.name : "—"}</Table.Cell>;
   }
 
   function LadderForMatchTableCell({ match }: { match: Match }) {
-    return (
-      <RelationTableCell<Match, Ladder>
-        entity={match}
-        dependencyKey={match.ladderId}
-        fetchRelation={async () => {
-          if (!match.ladderId) {
-            return null;
-          }
+    const [ladder, setLadder] = useState<Ladder | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-          const result = await ladderClient().get({
+    useEffect(() => {
+      const fetchLadder = async () => {
+        setLoading(true);
+        setError(null);
+        setLadder(null);
+
+        if (!match.ladderId) {
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const { data, errors } = await ladderClient().get({
             id: match.ladderId,
           });
 
-          if (result.errors) {
-            throw new Error("Error fetching ladder for match");
+          if (errors) {
+            console.error("Error fetching ladder for match:", errors);
+            setError("Failed to load ladder");
+            return;
           }
 
-          return result.data;
-        }}
-        renderContent={(ladder) => (
-          <Text>{ladder && "name" in ladder ? ladder.name : "—"}</Text>
-        )}
-      />
-    );
+          setLadder(data || null);
+        } catch (err) {
+          console.error("Unexpected error fetching ladder for match:", err);
+          setError("An unexpected error occurred");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchLadder();
+    }, [match.ladderId]);
+
+    if (loading) {
+      return (
+        <Table.Cell>
+          <Spinner size="sm" />
+        </Table.Cell>
+      );
+    }
+
+    if (error) {
+      return (
+        <Table.Cell color="red.500">
+          <Text>{error}</Text>
+        </Table.Cell>
+      );
+    }
+
+    return <Table.Cell>{ladder ? ladder.name : "—"}</Table.Cell>;
   }
 
   function WinnerTableCell({ match }: { match: Match }) {
-    return (
-      <RelationTableCell<Match, Team>
-        entity={match}
-        dependencyKey={match.winnerId || ""}
-        fetchRelation={async () => {
-          if (!match.winnerId) {
-            return null;
-          }
+    const [team, setTeam] = useState<Team | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-          const result = await teamClient().get({
+    useEffect(() => {
+      const fetchWinner = async () => {
+        setLoading(true);
+        setError(null);
+        setTeam(null);
+
+        if (!match.winnerId) {
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const { data, errors } = await teamClient().get({
             id: match.winnerId,
           });
 
-          if (result.errors) {
-            throw new Error("Error fetching winner team");
+          if (errors) {
+            console.error("Error fetching winner team:", errors);
+            setError("Failed to load winner team");
+            return;
           }
 
-          return result.data;
-        }}
-        renderContent={(team) => (
-          <Flex align="center">
-            {team && "name" in team ? (
-              <>
-                <Icon as={IoTrophy} color="yellow.500" mr={2} />
-                <Text>{team.name}</Text>
-              </>
-            ) : (
-              <Text>Not recorded</Text>
-            )}
-          </Flex>
-        )}
-      />
+          setTeam(data || null);
+        } catch (err) {
+          console.error("Unexpected error fetching winner team:", err);
+          setError("An unexpected error occurred");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchWinner();
+    }, [match.winnerId]);
+
+    if (loading) {
+      return (
+        <Table.Cell>
+          <Spinner size="sm" />
+        </Table.Cell>
+      );
+    }
+
+    if (error) {
+      return (
+        <Table.Cell color="red.500">
+          <Text>{error}</Text>
+        </Table.Cell>
+      );
+    }
+
+    return (
+      <Table.Cell>
+        <Flex align="center">
+          {team ? (
+            <>
+              <Icon as={IoTrophy} color="yellow.500" mr={2} />
+              <Text>{team.name}</Text>
+            </>
+          ) : (
+            <Text>Not recorded</Text>
+          )}
+        </Flex>
+      </Table.Cell>
     );
   }
 
@@ -626,8 +831,8 @@ function AdminPage() {
               <Table.Cell>
                 {player.givenName} {player.familyName}
               </Table.Cell>
-              <TeamsForPlayer1TableCell player={player} />
-              <TeamsForPlayer2TableCell player={player} />
+              <TeamsForPlayerTableCell player={player} playerType="player1Id" />
+              <TeamsForPlayerTableCell player={player} playerType="player2Id" />
             </Table.Row>
           ))}
         </EntityCard>
@@ -674,7 +879,6 @@ function AdminPage() {
             <Table.Row key={match.id}>
               <IdCell id={match.id} />
               <Table.Cell>
-                {match.playedOn}
                 {match.playedOn ? formatDate(match.playedOn) : "Not played"}
               </Table.Cell>
               <LadderForMatchTableCell match={match} />

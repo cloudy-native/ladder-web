@@ -36,7 +36,7 @@ import { Player, playerClient, teamClient } from "../../utils/amplify-helpers";
 export function ClientOnly() {
   return (
     <Container maxW="container.lg">
-      <Heading as="h1" mb={6}>
+      <Heading as="h1" m={6}>
         Players
       </Heading>
       <PlayersPage />

@@ -47,7 +47,7 @@ import {
 export function ClientOnly() {
   return (
     <Container maxW="container.lg">
-      <Heading as="h1" mb={6}>
+      <Heading as="h1" m={6}>
         Matches
       </Heading>
       <MatchesPage />
