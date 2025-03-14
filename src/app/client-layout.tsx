@@ -1,8 +1,8 @@
 "use client";
 
-import { Authenticator, useAuthenticator } from "@aws-amplify/ui-react";
-import { Header } from "../components/ui/layout/Header";
+import { Authenticator } from "@aws-amplify/ui-react";
 import { usePathname } from "next/navigation";
+import { Header } from "../components/ui/layout/Header";
 
 // In case you organize imports by mistake
 // You MUST import the following components otherwise the code will not work
