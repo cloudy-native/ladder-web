@@ -6,15 +6,9 @@ import {
   Box,
   Button,
   Container,
-  createListCollection,
   Heading,
   HStack,
   Icon,
-  SelectContent,
-  SelectItem,
-  SelectRoot,
-  SelectTrigger,
-  SelectValueText,
   Spinner,
   Table,
   Text,
@@ -24,25 +18,24 @@ import {
 import React, { useCallback, useState } from "react";
 import { IoAddCircle, IoRefresh, IoTrophy } from "react-icons/io5";
 import { Pagination, SearchInput } from "../../components/shared";
+import {
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogRoot,
+  DialogTitle,
+  DialogTrigger,
+} from "../../components/ui/dialog";
 import { Field } from "../../components/ui/field";
 import {
   MatchWithDetails,
   useFilter,
-  useLadderList,
   useMatchCreate,
   useMatchList,
   usePagination,
   useTeamsForMatch,
 } from "../../utils/hooks";
-import {
-  DialogRoot,
-  DialogContent,
-  DialogHeader,
-  DialogBody,
-  DialogFooter,
-  DialogTitle,
-  DialogTrigger,
-} from "../../components/ui/dialog";
 
 export function ClientOnly() {
   return (
@@ -57,8 +50,7 @@ export function ClientOnly() {
 
 function MatchesPage() {
   // Custom hooks
-  const { matches, loading, refreshMatches } = useMatchList();
-  const { ladders } = useLadderList();
+  const { matches, loading: loadingMatches, refreshMatches } = useMatchList();
 
   // State for create match dialog
   const createMatchDialog = useDialog();
@@ -118,6 +110,9 @@ function MatchesPage() {
   // Team options for selected ladder
   const { teams: teamsForLadder, loading: loadingTeams } =
     useTeamsForMatch(selectedLadderId);
+
+  if (loadingTeams) return <Text fontSize="sm">Loading teams...</Text>;
+  if (loadingMatches) return <Text fontSize="sm">Loading matches...</Text>;
 
   // Create match hook
   const { createMatch, isCreating, createError } = useMatchCreate();
@@ -186,18 +181,15 @@ function MatchesPage() {
 
                   {selectedLadderId && (
                     <>
-                      <Field label="Team 1">
-                      </Field>
+                      <Field label="Team 1"></Field>
 
-                      <Field label="Team 2">
-                      </Field>
+                      <Field label="Team 2"></Field>
 
                       {selectedTeam1Id && selectedTeam2Id && (
                         <Field
                           label="Winner (optional)"
                           helperText="If you select a winner, team ratings will be updated automatically."
-                        >
-                        </Field>
+                        ></Field>
                       )}
                     </>
                   )}

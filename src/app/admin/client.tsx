@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate } from "@/utils/dates";
 import {
   Box,
   Button,
@@ -31,7 +32,6 @@ import {
 import { deleteAllItems } from "../../utils/data-fetchers";
 import { addSampleEntities } from "../../utils/data-generators";
 import { nameFor } from "../../utils/random";
-import { formatDate } from "@/utils/dates";
 
 export function ClientOnly() {
   return (

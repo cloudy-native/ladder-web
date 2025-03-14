@@ -1,21 +1,18 @@
 "use client";
 
-import { Authenticator } from "@aws-amplify/ui-react";
-import { usePathname } from "next/navigation";
-import { Header } from "../components/ui/layout/Header";
-
+/* eslint-disable */
 // In case you organize imports by mistake
 // You MUST import the following components otherwise the code will not work
-// import { Authenticator, useAuthenticator } from "@aws-amplify/ui-react";
-// import { ClientOnly } from "./home-client";
-// import { Header } from "../components/ui/layout/Header";
-// import { ClientOnly as AdminPageClientOnly } from "./admin/client";
-// import { ClientOnly as LaddersPageClientOnly } from "./ladders/client";
-// import { ClientOnly as MatchesPageClientOnly } from "./matches/client";
-// import { ClientOnly as PlayersPageClientOnly } from "./players/client";
-// import { ClientOnly as TeamsPageClientOnly } from "./teams/client";
-// import { getClient } from "../utils/amplify-helpers";
-// import { usePathname } from "next/navigation";
+import { Authenticator, useAuthenticator } from "@aws-amplify/ui-react";
+import { ClientOnly } from "./home-client";
+import { Header } from "../components/ui/layout/Header";
+import { ClientOnly as AdminPageClientOnly } from "./admin/client";
+import { ClientOnly as LaddersPageClientOnly } from "./ladders/client";
+import { ClientOnly as MatchesPageClientOnly } from "./matches/client";
+import { ClientOnly as PlayersPageClientOnly } from "./players/client";
+import { ClientOnly as TeamsPageClientOnly } from "./teams/client";
+import { getClient } from "../utils/amplify-helpers";
+import { usePathname } from "next/navigation";
 
 export default function ClientLayout({
   children,

@@ -1,6 +1,6 @@
 import { Button, Card, Heading, Icon, Table } from "@chakra-ui/react";
-import { IoTrash } from "react-icons/io5";
 import { ReactNode } from "react";
+import { IoTrash } from "react-icons/io5";
 
 interface EntityCardProps {
   title: string;
@@ -42,11 +42,7 @@ export function EntityCard({
         </Table.Root>
       </Card.Body>
       <Card.Footer>
-        <Button
-          loading={isLoading}
-          onClick={onDelete}
-          disabled={isLoading}
-        >
+        <Button loading={isLoading} onClick={onDelete} disabled={isLoading}>
           <Icon as={IoTrash} mr={2} />
           {deleteButtonText}
         </Button>

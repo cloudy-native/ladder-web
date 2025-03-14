@@ -56,7 +56,7 @@ function LaddersPage() {
   // Custom hooks for ladder data and operations
   const { ladders, loading, refreshLadders } = useLadderList();
   const { createLadder, isCreating, createError } = useLadderCreate();
-  const { deleteLadder, deletingLadders, deleteError } = useLadderDelete();
+  const { deleteLadder,  deleteError } = useLadderDelete();
 
   // Filter hook
   const ladderFilter = useCallback((ladder: Ladder, searchText: string) => {

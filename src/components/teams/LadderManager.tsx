@@ -36,8 +36,7 @@ export function LadderManager({
   onLadderChanged,
   trigger,
 }: LadderManagerProps) {
-  const { ladders, loading, error, isTeamInLadder, refreshLadders } =
-    useLadderSelect();
+  const { ladders, loading, error, isTeamInLadder } = useLadderSelect();
 
   const { addTeamToLadder, removeTeamFromLadder, isUpdating, updateError } =
     useTeamLadder();

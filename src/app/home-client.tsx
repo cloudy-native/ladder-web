@@ -2,7 +2,6 @@
 
 import {
   Box,
-  Card,
   CardBody,
   CardHeader,
   CardRoot,
@@ -81,10 +80,20 @@ export function ClientOnly() {
             }}
             borderRadius="lg"
           >
-            <Link as={NextLink} href={feature.href} _hover={{ textDecoration: "none" }} >
+            <Link
+              as={NextLink}
+              href={feature.href}
+              _hover={{ textDecoration: "none" }}
+            >
               <CardHeader p={4}>
                 <Flex direction="column" align="center" textAlign="center">
-                  <Icon as={feature.icon} w={10} h={10} mb={4} color="blue.500" />
+                  <Icon
+                    as={feature.icon}
+                    w={10}
+                    h={10}
+                    mb={4}
+                    color="blue.500"
+                  />
                   <Heading as="h3" size="md" mb={2}>
                     {feature.title}
                   </Heading>

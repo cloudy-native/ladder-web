@@ -11,7 +11,7 @@ import {
   Spacer,
   Text,
   useBreakpointValue,
-  useDisclosure
+  useDisclosure,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
@@ -22,7 +22,7 @@ import {
   IoPeople,
   IoPerson,
   IoSettingsSharp,
-  IoTrophy
+  IoTrophy,
 } from "react-icons/io5";
 import { useColorModeValue } from "../../ui/color-mode";
 
@@ -65,7 +65,7 @@ const NavItem = ({ icon, href, children, isActive, onClick }: NavItemProps) => {
 export const Header = () => {
   const pathname = usePathname();
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const { onOpen, } = useDisclosure();
+  const { onOpen } = useDisclosure();
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
 
