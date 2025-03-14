@@ -155,7 +155,7 @@ export type PartialTeam = {
 };
 
 export type PartialMatch = {
-  id: String;
+  id: string;
   ladderId: string;
   playedOn: string | null ;
   player1Id: string;
@@ -753,7 +753,7 @@ export async function deleteAllItems<T extends { id: string }>({
 }) {
   try {
     if (items.length === 0) {
-      console.log(`No ${String(modelName)}s to delete`);
+      console.log(`No ${modelName}s to delete`);
       return true;
     }
 
@@ -767,7 +767,7 @@ export async function deleteAllItems<T extends { id: string }>({
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
       const batch = items.slice(i, i + BATCH_SIZE);
       console.log(
-        `Deleting ${batch.length} ${String(modelName)}s (batch ${
+        `Deleting ${batch.length} ${modelName}s (batch ${
           Math.floor(i / BATCH_SIZE) + 1
         }/${Math.ceil(items.length / BATCH_SIZE)})`
       );
@@ -798,13 +798,13 @@ export async function deleteAllItems<T extends { id: string }>({
 
           if (response.errors) {
             console.error(
-              `Error deleting ${String(modelName)} ${item.id}:`,
+              `Error deleting ${modelName} ${item.id}:`,
               response.errors
             );
-            throw new Error(`Failed to delete ${String(modelName)} ${item.id}`);
+            throw new Error(`Failed to delete ${modelName} ${item.id}`);
           }
         } catch (err) {
-          console.error(`Error deleting ${String(modelName)} ${item.id}:`, err);
+          console.error(`Error deleting ${modelName} ${item.id}:`, err);
           // Continue with other deletions rather than throwing
         }
       });
@@ -812,10 +812,10 @@ export async function deleteAllItems<T extends { id: string }>({
       await Promise.all(deletePromises);
     }
 
-    console.log(`All ${String(modelName)}s successfully deleted`);
+    console.log(`All ${modelName}s successfully deleted`);
     return true;
   } catch (error) {
-    console.error(`Error deleting ${String(modelName)}s:`, error);
+    console.error(`Error deleting ${modelName}s:`, error);
     throw error;
   }
 }

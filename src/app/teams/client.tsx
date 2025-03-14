@@ -127,6 +127,7 @@ function TeamsPage() {
   };
 
   // Handle ladder management
+  // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
   const handleManageLadder = (team: TeamWithPlayers, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click event
     setSelectedTeam(team);

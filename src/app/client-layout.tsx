@@ -13,6 +13,7 @@ import { ClientOnly as PlayersPageClientOnly } from "./players/client";
 import { ClientOnly as TeamsPageClientOnly } from "./teams/client";
 import { getClient } from "../utils/amplify-helpers";
 import { usePathname } from "next/navigation";
+import { Footer } from "@/components/ui/layout/Footer";
 
 export default function ClientLayout({
   children,
@@ -38,6 +39,7 @@ export default function ClientLayout({
         authenticatedPages={authenticatedPages}
         pathname={pathname}
       />
+      <Footer />
     </Authenticator.Provider>
   );
 }

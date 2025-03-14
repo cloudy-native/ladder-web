@@ -1,20 +1,21 @@
 // This file contains type definitions for your environment
 // It helps TypeScript understand JSON imports and other non-TypeScript files
 
-declare module '*.json' {
+declare module "*.json" {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const value: any;
   export default value;
 }
 
-declare module '*.svg' {
-  import React from 'react';
+declare module "*.svg" {
+  import React from "react";
   export const ReactComponent: React.FC<React.SVGProps<SVGSVGElement>>;
   const src: string;
   export default src;
 }
 
-declare module '*.png';
-declare module '*.jpg';
-declare module '*.jpeg';
-declare module '*.gif';
-declare module '*.webp';
+declare module "*.png";
+declare module "*.jpg";
+declare module "*.jpeg";
+declare module "*.gif";
+declare module "*.webp";

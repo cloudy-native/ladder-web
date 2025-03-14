@@ -182,9 +182,7 @@ function MatchesPage() {
                   {selectedLadderId && (
                     <>
                       <Field label="Team 1"></Field>
-
                       <Field label="Team 2"></Field>
-
                       {selectedTeam1Id && selectedTeam2Id && (
                         <Field
                           label="Winner (optional)"
@@ -252,7 +250,7 @@ function MatchesPage() {
       </Box>
 
       {/* Matches List */}
-      {loading ? (
+      {loadingMatches ? (
         <Box textAlign="center" py={10}>
           <Spinner size="xl" />
           <Text mt={4}>Loading matches...</Text>

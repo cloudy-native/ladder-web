@@ -1,17 +1,16 @@
-import {
-  randomFirstName,
-  randomLastName,
-  randomEmail,
-  randomAvatar,
-  randomLadderName,
-  randomLadderDescription,
-  randomTeamName,
-  randomRecentDate,
-  randomRating,
-  nameFor,
-} from "../random";
 import { Player } from "../amplify-helpers";
-import { Placeholder } from "@aws-amplify/ui-react";
+import {
+  nameFor,
+  randomAvatar,
+  randomEmail,
+  randomFirstName,
+  randomLadderDescription,
+  randomLadderName,
+  randomLastName,
+  randomRating,
+  randomRecentDate,
+  randomTeamName,
+} from "../random";
 
 describe("random utility functions", () => {
   describe("randomFirstName", () => {

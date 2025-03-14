@@ -5,4 +5,4 @@
 - [ ] Fx zsh syntax highlighting
 - [ ] There's a lot of confusion about the hook for ladders, players, and matches. We need separate hooks: Players for Team, Teams for Ladder, ...
 - [ ] Figure out how to do more with styling. For example, default variant for tabs
-- 
+- [ ] Pagination defaults to 10, not PAGE_SIZE for some reason

@@ -243,18 +243,18 @@ function AdminPage() {
     refreshFunction: () => Promise<void>;
   }) {
     if (items.length === 0) {
-      console.log(`No ${String(modelName)}s to delete`);
+      console.log(`No ${modelName}s to delete`);
       return;
     }
 
     setIsLoading((prev) => ({ ...prev, [entityType]: true }));
 
     try {
-      console.log(`Deleting ${items.length} ${String(modelName)}s...`);
+      console.log(`Deleting ${items.length} ${modelName}s...`);
       await deleteAllItems({ items, modelName });
-      console.log(`Successfully deleted ${items.length} ${String(modelName)}s`);
+      console.log(`Successfully deleted ${items.length} ${modelName}s`);
     } catch (error) {
-      console.error(`Error deleting ${String(modelName)}s:`, error);
+      console.error(`Error deleting ${modelName}s:`, error);
     } finally {
       setIsLoading((prev) => ({ ...prev, [entityType]: false }));
       // Refresh the data after deletion

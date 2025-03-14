@@ -22,6 +22,7 @@ interface SocialButtonProps {
   href: string;
 }
 
+// eslint-disable-next-line no-unused-vars -- this variable needs to be here for future work
 const SocialButton = ({ children, label, href }: SocialButtonProps) => {
   return (
     <Button

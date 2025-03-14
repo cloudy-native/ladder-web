@@ -6,12 +6,11 @@ import {
   Flex,
   HStack,
   Icon,
-  IconButton,
   Link,
   Spacer,
   Text,
   useBreakpointValue,
-  useDisclosure,
+  useDisclosure
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,7 +23,9 @@ import {
   IoSettingsSharp,
   IoTrophy,
 } from "react-icons/io5";
-import { useColorModeValue } from "../../ui/color-mode";
+// import { ReactComponent as Logo } from "../../../assets/react.svg";
+import { Button } from "@aws-amplify/ui-react";
+import { useColorModeValue } from "../color-mode";
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -66,8 +67,9 @@ export const Header = () => {
   const pathname = usePathname();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { onOpen } = useDisclosure();
-  const bgColor = useColorModeValue("white", "gray.800");
+  const bgColor = useColorModeValue("blue.50", "gray.800"); // Pale blue in light mode
   const borderColor = useColorModeValue("gray.200", "gray.700");
+  // const logoColor = useColorModeValue("blue.500", "white"); // change the color of the logo in dark mode
 
   const navItems = [
     { href: "/", icon: IoHome, label: "Home" },
@@ -81,40 +83,44 @@ export const Header = () => {
   return (
     <Box
       as="header"
-      py={3}
+      py={4} // Increased padding
       position="sticky"
       top={0}
       zIndex={1000}
       bg={bgColor}
-      boxShadow="sm"
       borderBottomWidth="1px"
       borderColor={borderColor}
     >
       <Container maxW="container.xl">
         <Flex align="center">
           {isMobile && (
-            <IconButton
-              aria-label="Open menu"
-              icon={<IoMenu />}
-              variant="ghost"
-              mr={2}
-              onClick={onOpen}
-            />
+            <Box>
+              <Button aria-label="Open menu" onClick={onOpen}>
+                <IoMenu />
+              </Button>
+            </Box>
           )}
 
+          {/* Logo */}
           <Link as={NextLink} href="/" _hover={{ textDecoration: "none" }}>
-            <Text
-              fontSize="xl"
-              fontWeight="bold"
-              bgGradient="linear(to-r, blue.400, teal.400)"
-              bgClip="text"
-            >
-              Ladder Web
-            </Text>
+            <HStack>
+              {/* <Logo fill={logoColor} width="48px" height="48px" /> */}
+              <Text
+                fontSize="2xl" // Larger font size
+                fontWeight="bold"
+                bgGradient="linear(to-r, blue.400, teal.400)"
+                bgClip="text"
+              >
+                Ladder Web
+              </Text>
+            </HStack>
           </Link>
 
+          <Spacer />
+
+          {/* Navigation Items */}
           {!isMobile && (
-            <HStack ml={8}>
+            <HStack>
               {navItems.map((item) => (
                 <NavItem
                   key={item.href}
@@ -127,8 +133,6 @@ export const Header = () => {
               ))}
             </HStack>
           )}
-
-          <Spacer />
         </Flex>
       </Container>
     </Box>

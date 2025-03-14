@@ -11,7 +11,9 @@ interface RelationCellProps<T> {
   fetchRelation: () =>
     | Promise<{ data?: T | null; errors?: any[] }>
     | { data?: T | null; errors?: any[] };
-  renderData: (data: T | null | undefined) => React.ReactNode | Promise<React.ReactNode>;
+  renderData: (
+    data: T | null | undefined
+  ) => React.ReactNode | Promise<React.ReactNode>;
   loadingElement?: React.ReactNode;
   errorElement?: React.ReactNode;
 }
@@ -31,10 +33,10 @@ export function RelationCell<T>({
 
   useEffect(() => {
     let isMounted = true;
-    
+
     async function fetchData() {
       if (!isMounted) return;
-      
+
       setLoading(true);
       setError(false);
 
@@ -43,10 +45,11 @@ export function RelationCell<T>({
 
         // TODO: errors is GraphQLFormattedError
         //
+        // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
         if (isPromise<{ data?: T | null; errors?: any[] }>(result)) {
           const response = await result;
           if (!isMounted) return;
-          
+
           if (response.errors) {
             setError(true);
           } else {
@@ -68,7 +71,7 @@ export function RelationCell<T>({
     }
 
     fetchData();
-    
+
     return () => {
       isMounted = false;
     };
@@ -88,7 +91,7 @@ export function RelationCell<T>({
     const renderAsync = async () => {
       try {
         const rendered = renderData(data);
-        
+
         if (isPromise<React.ReactNode>(rendered)) {
           const result = await rendered;
           if (isMounted) {
@@ -130,7 +133,7 @@ export function RelationCell<T>({
 }
 
 /**
- * Simplified version that just returns the Text component 
+ * Simplified version that just returns the Text component
  * instead of wrapping in a Table.Cell - useful for other contexts
  */
 export function RelationData<T>({
@@ -148,10 +151,10 @@ export function RelationData<T>({
 
   useEffect(() => {
     let isMounted = true;
-    
+
     async function fetchData() {
       if (!isMounted) return;
-      
+
       setLoading(true);
       setError(false);
 
@@ -159,11 +162,12 @@ export function RelationData<T>({
         const result = stableFetchRelation();
 
         // TODO: errors is of type GraphQLFormattedError, but that's not easy to import
-        // 
+        //
+        // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
         if (isPromise<{ data?: T | null; errors?: any[] }>(result)) {
           const response = await result;
           if (!isMounted) return;
-          
+
           if (response.errors) {
             setError(true);
           } else {
@@ -185,7 +189,7 @@ export function RelationData<T>({
     }
 
     fetchData();
-    
+
     return () => {
       isMounted = false;
     };
@@ -205,7 +209,7 @@ export function RelationData<T>({
     const renderAsync = async () => {
       try {
         const rendered = renderData(data);
-        
+
         if (isPromise<React.ReactNode>(rendered)) {
           const result = await rendered;
           if (isMounted) {
