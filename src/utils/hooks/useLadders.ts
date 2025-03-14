@@ -12,11 +12,12 @@ import {
 import {
   createLadder as createLadderApi,
   deleteLadder as deleteLadderApi,
-  getLadders,
+  getLaddersWithTeamsAndMatches,
+  LadderWithTeamsAndMatches
 } from "../data-fetchers";
 
 export function useLadderList() {
-  const [ladders, setLadders] = useState<Ladder[]>([]);
+  const [ladders, setLadders] = useState<LadderWithTeamsAndMatches[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +26,7 @@ export function useLadderList() {
     setError(null);
 
     try {
-      const ladderData = await getLadders();
+      const ladderData = await getLaddersWithTeamsAndMatches();
       setLadders(ladderData);
     } catch (err) {
       console.error("Error fetching ladders:", err);

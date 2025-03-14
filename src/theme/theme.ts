@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import {
   createSystem,
@@ -27,7 +27,6 @@ const buttonRecipe = defineRecipe({
           bg: "blue.700",
         },
       },
-
     },
   },
 });

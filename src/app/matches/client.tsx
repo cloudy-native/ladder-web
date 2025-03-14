@@ -36,6 +36,7 @@ import {
   usePagination,
   useTeamsForMatch,
 } from "../../utils/hooks";
+import { PAGE_SIZE } from "@/utils/constants";
 
 export function ClientOnly() {
   return (
@@ -85,7 +86,6 @@ function MatchesPage() {
   } = useFilter(matches, matchFilter);
 
   // Pagination
-  const MATCHES_PER_PAGE = 10;
   const {
     currentPage,
     setCurrentPage,
@@ -94,7 +94,7 @@ function MatchesPage() {
     firstItemIndex,
     lastItemIndex,
     totalItems,
-  } = usePagination(filteredMatches, MATCHES_PER_PAGE);
+  } = usePagination(filteredMatches);
 
   // Reset form when dialog opens/closes
   React.useEffect(() => {
@@ -313,6 +313,7 @@ function MatchesPage() {
                         {match.team2Details?.name || "Unknown Team"}
                       </Table.Cell>
                       <Table.Cell>
+                        {match.playedOn}
                         {match.playedOn
                           ? formatFriendlyDate(match.playedOn)
                           : "Not played"}
@@ -323,7 +324,7 @@ function MatchesPage() {
               </Table.Root>
 
               {/* Pagination controls */}
-              {filteredMatches.length > MATCHES_PER_PAGE && (
+              {filteredMatches.length > PAGE_SIZE && (
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}

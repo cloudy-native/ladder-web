@@ -2,12 +2,16 @@ import { faker } from "@faker-js/faker";
 import * as changeCase from "change-case";
 import { Player } from "./amplify-helpers";
 
-export function getRandomElement<T>(array: T[]): T {
+export function randomIndex<T>(array: T[]): number {
   if (array.length === 0) {
     throw new Error("Cannot get a random element from an empty array.");
   }
-  const randomIndex = Math.floor(Math.random() * array.length);
-  return array[randomIndex];
+  
+  return Math.floor(Math.random() * array.length);
+}
+
+export function randomElement<T>(array: T[]): T {
+  return array[randomIndex(array)];
 }
 
 export function randomLadderName() {
@@ -20,7 +24,7 @@ export function randomLadderDescription() {
 
 export function randomTeamName() {
   return changeCase.capitalCase(
-    `${faker.food.adjective()} ${faker.food.dish()}`
+    `${faker.music.genre()} ${faker.animal.petName()}`
   );
 }
 

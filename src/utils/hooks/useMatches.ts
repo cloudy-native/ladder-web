@@ -126,10 +126,11 @@ export function useMatchList() {
         );
 
         // Sort by creation date, newest first
-        matchesWithDetails.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        // TODO: sort by ???
+        // matchesWithDetails.sort(
+        //   (a, b) =>
+        //     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        // );
 
         setMatches(matchesWithDetails);
       } else {
@@ -181,7 +182,6 @@ export function useMatchesForLadder(ladderId: string) {
           "team1Id",
           "team2Id",
           "winnerId",
-          "createdAt",
         ],
       });
 
@@ -265,10 +265,11 @@ export function useMatchesForLadder(ladderId: string) {
         );
 
         // Sort by creation date, newest first
-        matchesWithDetails.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        // TODO: sort by ???
+        // matchesWithDetails.sort(
+        //   (a, b) =>
+        //     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        // );
 
         setMatches(matchesWithDetails);
       } else {

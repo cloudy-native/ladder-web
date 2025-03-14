@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDate } from "@/utils/dates";
+import { formatFriendlyDate, formatFullDate } from "@/utils/dates";
 import {
   Box,
   Button,
@@ -14,6 +14,7 @@ import {
   Table,
   Text,
   VStack,
+  Tabs,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { IoBeaker, IoRefresh, IoTrash, IoTrophy } from "react-icons/io5";
@@ -151,7 +152,7 @@ function AdminPage() {
           "team1Id",
           "team2Id",
           "winnerId",
-          "createdAt",
+          "playedOn",
         ],
       });
 
@@ -167,17 +168,16 @@ function AdminPage() {
             typeof match === "object" &&
             match.id &&
             match.team1Id &&
-            match.team2Id &&
-            //TODO: uuuuuuugly!
-            (typeof match.createdAt === "string" ||
-              match.createdAt === null ||
-              match.createdAt === undefined)
+            match.team2Id
         ) as Match[];
         // Sort by creation date, newest first
         validMatches.sort((a, b) => {
-          // Handle null createdAt values
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0; // Default to epoch for null (oldest)
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0; // Default to epoch for null (oldest)
+          // Sort by date played, unplayed at bottom of list
+          // TODO: unplayed at top is better?
+          //
+          const dateA = a.playedOn ? new Date(a.playedOn).getTime() : 0;
+          const dateB = b.playedOn ? new Date(b.playedOn).getTime() : 0;
+
           return dateB - dateA;
         });
         setMatches(validMatches);
@@ -789,105 +789,125 @@ function AdminPage() {
           </ButtonGroup>
         </Flex>
 
-        {/* Ladders */}
-        <EntityCard
-          title="Ladders"
-          isLoading={isLoading.ladders}
-          onDelete={deleteAllLadders}
-          deleteButtonText="Delete All Ladders"
-          columnHeaders={[
-            { key: "id", label: "ID", width: "60px" },
-            { key: "name", label: "Name" },
-            { key: "description", label: "Description" },
-            { key: "teams", label: "Teams" },
-          ]}
-        >
-          {ladders.map((ladder) => (
-            <Table.Row key={ladder.id}>
-              <IdCell id={ladder.id} />
-              <Table.Cell>{ladder.name}</Table.Cell>
-              <Table.Cell>{ladder.description}</Table.Cell>
-              <TeamsForLadderTableCell ladder={ladder} />
-            </Table.Row>
-          ))}
-        </EntityCard>
+        <Tabs.Root variant={"enclosed"} defaultValue={"ladders"}>
+          <Tabs.List>
+            <Tabs.Trigger value="ladders">Ladders</Tabs.Trigger>
+            <Tabs.Trigger value="players">Players</Tabs.Trigger>
+            <Tabs.Trigger value="teams">Teams</Tabs.Trigger>
+            <Tabs.Trigger value="matches">Matches</Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value="ladders">
+            <EntityCard
+              title="Ladders"
+              isLoading={isLoading.ladders}
+              onDelete={deleteAllLadders}
+              deleteButtonText="Delete All Ladders"
+              columnHeaders={[
+                { key: "id", label: "ID", width: "60px" },
+                { key: "name", label: "Name" },
+                { key: "description", label: "Description" },
+                { key: "teams", label: "Teams" },
+              ]}
+            >
+              {ladders.map((ladder) => (
+                <Table.Row key={ladder.id}>
+                  <IdCell id={ladder.id} />
+                  <Table.Cell>{ladder.name}</Table.Cell>
+                  <Table.Cell>{ladder.description}</Table.Cell>
+                  <TeamsForLadderTableCell ladder={ladder} />
+                </Table.Row>
+              ))}
+            </EntityCard>
+          </Tabs.Content>
 
-        {/* Players */}
-        <EntityCard
-          title="Players"
-          isLoading={isLoading.players}
-          onDelete={deleteAllPlayers}
-          deleteButtonText="Delete All Players"
-          columnHeaders={[
-            { key: "id", label: "ID", width: "60px" },
-            { key: "name", label: "Name" },
-            { key: "team1", label: "Team (Player 1)" },
-            { key: "team2", label: "Team (Player 2)" },
-          ]}
-        >
-          {players.map((player) => (
-            <Table.Row key={player.id}>
-              <IdCell id={player.id} />
-              <Table.Cell>
-                {player.givenName} {player.familyName}
-              </Table.Cell>
-              <TeamsForPlayerTableCell player={player} playerType="player1Id" />
-              <TeamsForPlayerTableCell player={player} playerType="player2Id" />
-            </Table.Row>
-          ))}
-        </EntityCard>
+          <Tabs.Content value="players">
+            <EntityCard
+              title="Players"
+              isLoading={isLoading.players}
+              onDelete={deleteAllPlayers}
+              deleteButtonText="Delete All Players"
+              columnHeaders={[
+                { key: "id", label: "ID", width: "60px" },
+                { key: "name", label: "Name" },
+                { key: "team1", label: "Team (Player 1)" },
+                { key: "team2", label: "Team (Player 2)" },
+              ]}
+            >
+              {players.map((player) => (
+                <Table.Row key={player.id}>
+                  <IdCell id={player.id} />
+                  <Table.Cell>
+                    {player.givenName} {player.familyName}
+                  </Table.Cell>
+                  <TeamsForPlayerTableCell
+                    player={player}
+                    playerType="player1Id"
+                  />
+                  <TeamsForPlayerTableCell
+                    player={player}
+                    playerType="player2Id"
+                  />
+                </Table.Row>
+              ))}
+            </EntityCard>
+          </Tabs.Content>
 
-        {/* Teams */}
-        <EntityCard
-          title="Teams"
-          isLoading={isLoading.teams}
-          onDelete={deleteAllTeams}
-          deleteButtonText="Delete All Teams"
-          columnHeaders={[
-            { key: "id", label: "ID", width: "60px" },
-            { key: "name", label: "Name" },
-            { key: "ladder", label: "Ladder" },
-            { key: "players", label: "Players" },
-          ]}
-        >
-          {teams.map((team) => (
-            <Table.Row key={team.id}>
-              <IdCell id={team.id} />
-              <Table.Cell>{team.name}</Table.Cell>
-              <LadderForTeamTableCell team={team} />
-              <PlayersForTeamTableCell team={team} />
-            </Table.Row>
-          ))}
-        </EntityCard>
+          <Tabs.Content value="teams">
+            <EntityCard
+              title="Teams"
+              isLoading={isLoading.teams}
+              onDelete={deleteAllTeams}
+              deleteButtonText="Delete All Teams"
+              columnHeaders={[
+                { key: "id", label: "ID", width: "60px" },
+                { key: "name", label: "Name" },
+                { key: "ladder", label: "Ladder" },
+                { key: "players", label: "Players" },
+              ]}
+            >
+              {teams.map((team) => (
+                <Table.Row key={team.id}>
+                  <IdCell id={team.id} />
+                  <Table.Cell>{team.name}</Table.Cell>
+                  <LadderForTeamTableCell team={team} />
+                  <PlayersForTeamTableCell team={team} />
+                </Table.Row>
+              ))}
+            </EntityCard>
+          </Tabs.Content>
 
-        {/* Matches */}
-        <EntityCard
-          title="Matches"
-          isLoading={isLoading.matches}
-          onDelete={deleteAllMatches}
-          deleteButtonText="Delete All Matches"
-          columnHeaders={[
-            { key: "id", label: "ID", width: "60px" },
-            { key: "date", label: "Date" },
-            { key: "ladder", label: "Ladder" },
-            { key: "team1", label: "Team 1" },
-            { key: "team2", label: "Team 2" },
-            { key: "winner", label: "Winner" },
-          ]}
-        >
-          {matches.map((match) => (
-            <Table.Row key={match.id}>
-              <IdCell id={match.id} />
-              <Table.Cell>
-                {match.playedOn ? formatDate(match.playedOn) : "Not played"}
-              </Table.Cell>
-              <LadderForMatchTableCell match={match} />
-              <TeamNameTableCell teamId={match.team1Id} />
-              <TeamNameTableCell teamId={match.team2Id} />
-              <WinnerTableCell match={match} />
-            </Table.Row>
-          ))}
-        </EntityCard>
+          <Tabs.Content value="matches">
+            <EntityCard
+              title="Matches"
+              isLoading={isLoading.matches}
+              onDelete={deleteAllMatches}
+              deleteButtonText="Delete All Matches"
+              columnHeaders={[
+                { key: "id", label: "ID", width: "60px" },
+                { key: "date", label: "Played On" },
+                { key: "ladder", label: "Ladder" },
+                { key: "team1", label: "Team 1" },
+                { key: "team2", label: "Team 2" },
+                { key: "winner", label: "Winner" },
+              ]}
+            >
+              {matches.map((match) => (
+                <Table.Row key={match.id}>
+                  <IdCell id={match.id} />
+                  <Table.Cell>
+                    {match.playedOn
+                      ? formatFriendlyDate(match.playedOn)
+                      : "Not played"}
+                  </Table.Cell>
+                  <LadderForMatchTableCell match={match} />
+                  <TeamNameTableCell teamId={match.team1Id} />
+                  <TeamNameTableCell teamId={match.team2Id} />
+                  <WinnerTableCell match={match} />
+                </Table.Row>
+              ))}
+            </EntityCard>
+          </Tabs.Content>
+        </Tabs.Root>
       </VStack>
     </Box>
   );

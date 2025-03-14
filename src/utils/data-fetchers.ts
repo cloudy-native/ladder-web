@@ -7,6 +7,7 @@ import {
   playerClient,
   teamClient,
 } from "./amplify-helpers";
+import { BATCH_SIZE } from "./constants";
 
 /**
  * Fetches all teams from the database
@@ -144,36 +145,53 @@ export async function getTeamsForLadder(ladderId: string) {
   }
 }
 
+export type PartialTeam = {
+  id: string;
+  rating: number;
+  ladderId: string;
+  name: string;
+  player1Id: string | null;
+  player2Id: string | null;
+};
+
+export type PartialMatch = {
+  id: String;
+  ladderId: string;
+  playedOn: string | null ;
+  player1Id: string;
+  player2Id: string;
+  winnerId: string;
+};
+
+export type LadderWithTeamsAndMatches = {
+  id: string;
+  name: string;
+  description: string;
+  teams: PartialTeam[];
+  matches: PartialMatch[];
+};
+
 /**
- * Fetches all ladders from the database
+ * Fetches all ladders from the database, with teams and matches for that ladder
  */
-export async function getLadders() {
+export async function getLaddersWithTeamsAndMatches(): Promise<
+  LadderWithTeamsAndMatches[]
+> {
   try {
     const { data: ladderData, errors } = await ladderClient().list({
-      selectionSet: ["id", "name", "description", "teams.*"],
+      selectionSet: ["id", "name", "description", "teams.*", "matches.*"],
     });
+
+    console.log("getLadders()", ladderData, errors);
 
     if (errors) {
       console.error("Error fetching ladders:", errors);
     }
 
-    // Ensure we only use valid ladder objects to prevent UI errors
-    if (ladderData && Array.isArray(ladderData)) {
-      const validLadders = ladderData.filter(
-        (ladder) =>
-          ladder !== null &&
-          typeof ladder === "object" &&
-          ladder.id &&
-          ladder.name
-      );
+    // Sort by name for better user experience
+    ladderData.sort((a, b) => a.name.localeCompare(b.name));
 
-      // Sort by name for better user experience
-      validLadders.sort((a, b) => a.name.localeCompare(b.name));
-
-      return validLadders;
-    } else {
-      return [];
-    }
+    return ladderData;
   } catch (error) {
     console.error("Error fetching ladders:", error);
     return [];
@@ -746,13 +764,12 @@ export async function deleteAllItems<T extends { id: string }>({
     const model = models[modelName];
 
     // Process in batches to avoid overwhelming the API
-    const batchSize = 10;
-    for (let i = 0; i < items.length; i += batchSize) {
-      const batch = items.slice(i, i + batchSize);
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+      const batch = items.slice(i, i + BATCH_SIZE);
       console.log(
         `Deleting ${batch.length} ${String(modelName)}s (batch ${
-          Math.floor(i / batchSize) + 1
-        }/${Math.ceil(items.length / batchSize)})`
+          Math.floor(i / BATCH_SIZE) + 1
+        }/${Math.ceil(items.length / BATCH_SIZE)})`
       );
 
       const deletePromises = batch.map(async (item) => {

@@ -1,6 +1,8 @@
 - [x] figure out async in onClick()
 - [x] move all getClient().modes.x to xClient()
 - [ ] capture nickname in login and use it in player name display
-- [ ] Generate faker avatar for players and display in UI
+- [x] Generate faker avatar for players and display in UI
 - [ ] Fx zsh syntax highlighting
-- [ ] 
+- [ ] There's a lot of confusion about the hook for ladders, players, and matches. We need separate hooks: Players for Team, Teams for Ladder, ...
+- [ ] Figure out how to do more with styling. For example, default variant for tabs
+- 

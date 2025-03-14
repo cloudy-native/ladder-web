@@ -10,19 +10,19 @@ import {
   Team,
   teamClient,
 } from "./amplify-helpers";
+import { BATCH_SIZE } from "./constants";
 import {
-  randomLadderDescription,
-  randomTeamName,
   randomAvatar,
+  randomElement,
   randomEmail,
   randomFirstName,
+  randomLadderDescription,
   randomLadderName,
   randomLastName,
   randomRating,
   randomRecentDate,
+  randomTeamName,
 } from "./random";
-
-// =================== ENTITY CREATION FUNCTIONS ===================
 
 /**
  * Options for data generation
@@ -59,16 +59,17 @@ async function clearExistingData() {
   try {
     // First delete matches to avoid foreign key constraints
     const { data: matches } = await matchClient().list();
+
     if (matches && matches.length > 0) {
       console.log(`Deleting ${matches.length} matches...`);
-      const batchSize = 10;
-      for (let i = 0; i < matches.length; i += batchSize) {
-        const batch = matches.slice(i, i + batchSize);
+
+      for (let i = 0; i < matches.length; i += BATCH_SIZE) {
+        const batch = matches.slice(i, i + BATCH_SIZE);
         await Promise.all(
           batch.map((match) => matchClient().delete({ id: match.id }))
         );
         console.log(
-          `Deleted ${Math.min(i + batchSize, matches.length)}/${
+          `Deleted ${Math.min(i + BATCH_SIZE, matches.length)}/${
             matches.length
           } matches`
         );
@@ -77,16 +78,17 @@ async function clearExistingData() {
 
     // Delete teams
     const { data: teams } = await teamClient().list();
+
     if (teams && teams.length > 0) {
       console.log(`Deleting ${teams.length} teams...`);
-      const batchSize = 10;
-      for (let i = 0; i < teams.length; i += batchSize) {
-        const batch = teams.slice(i, i + batchSize);
+
+      for (let i = 0; i < teams.length; i += BATCH_SIZE) {
+        const batch = teams.slice(i, i + BATCH_SIZE);
         await Promise.all(
           batch.map((team) => teamClient().delete({ id: team.id }))
         );
         console.log(
-          `Deleted ${Math.min(i + batchSize, teams.length)}/${
+          `Deleted ${Math.min(i + BATCH_SIZE, teams.length)}/${
             teams.length
           } teams`
         );
@@ -95,16 +97,17 @@ async function clearExistingData() {
 
     // Delete ladders
     const { data: ladders } = await ladderClient().list();
+
     if (ladders && ladders.length > 0) {
       console.log(`Deleting ${ladders.length} ladders...`);
-      const batchSize = 10;
-      for (let i = 0; i < ladders.length; i += batchSize) {
-        const batch = ladders.slice(i, i + batchSize);
+
+      for (let i = 0; i < ladders.length; i += BATCH_SIZE) {
+        const batch = ladders.slice(i, i + BATCH_SIZE);
         await Promise.all(
           batch.map((ladder) => ladderClient().delete({ id: ladder.id }))
         );
         console.log(
-          `Deleted ${Math.min(i + batchSize, ladders.length)}/${
+          `Deleted ${Math.min(i + BATCH_SIZE, ladders.length)}/${
             ladders.length
           } ladders`
         );
@@ -113,16 +116,17 @@ async function clearExistingData() {
 
     // Delete players
     const { data: players } = await playerClient().list();
+
     if (players && players.length > 0) {
       console.log(`Deleting ${players.length} players...`);
-      const batchSize = 10;
-      for (let i = 0; i < players.length; i += batchSize) {
-        const batch = players.slice(i, i + batchSize);
+
+      for (let i = 0; i < players.length; i += BATCH_SIZE) {
+        const batch = players.slice(i, i + BATCH_SIZE);
         await Promise.all(
           batch.map((player) => playerClient().delete({ id: player.id }))
         );
         console.log(
-          `Deleted ${Math.min(i + batchSize, players.length)}/${
+          `Deleted ${Math.min(i + BATCH_SIZE, players.length)}/${
             players.length
           } players`
         );
@@ -142,12 +146,11 @@ async function clearExistingData() {
 async function generatePlayers(count: number): Promise<Player[]> {
   console.log(`Generating ${count} players...`);
   const players: Player[] = [];
-  const batchSize = 10;
-  const batches = Math.ceil(count / batchSize);
+  const batches = Math.ceil(count / BATCH_SIZE);
 
   for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
-    const start = batchIndex * batchSize;
-    const end = Math.min(start + batchSize, count);
+    const start = batchIndex * BATCH_SIZE;
+    const end = Math.min(start + BATCH_SIZE, count);
     console.log(
       `Processing players batch ${batchIndex + 1}/${batches} (${
         start + 1
@@ -179,12 +182,11 @@ async function generatePlayers(count: number): Promise<Player[]> {
 async function generateLadders(count: number): Promise<Ladder[]> {
   console.log(`Generating ${count} ladders...`);
   const ladders: Ladder[] = [];
-  const batchSize = 10;
-  const batches = Math.ceil(count / batchSize);
+  const batches = Math.ceil(count / BATCH_SIZE);
 
   for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
-    const start = batchIndex * batchSize;
-    const end = Math.min(start + batchSize, count);
+    const start = batchIndex * BATCH_SIZE;
+    const end = Math.min(start + BATCH_SIZE, count);
     console.log(
       `Processing ladders batch ${batchIndex + 1}/${batches} (${
         start + 1
@@ -194,6 +196,7 @@ async function generateLadders(count: number): Promise<Ladder[]> {
       Array.from({ length: end - start }, () => {
         const name = randomLadderName();
         const description = randomLadderDescription();
+
         return ladderClient().create({ name, description });
       })
     );
@@ -203,6 +206,7 @@ async function generateLadders(count: number): Promise<Ladder[]> {
     ladders.push(...createdLadders);
   }
   console.log(`Successfully created ${ladders.length} ladders`);
+
   return ladders;
 }
 
@@ -216,6 +220,8 @@ async function generateTeams(
   singlePlayerRate: number
 ): Promise<Team[]> {
   console.log(`Generating ${count} teams...`);
+  console.log("ladders", ladders);
+  console.log("players", players);
   const teams: Team[] = [];
 
   // Make a copy of players that we can shuffle and assign
@@ -233,14 +239,7 @@ async function generateTeams(
   try {
     // Prepare team creation parameters
     const teamParams = Array.from({ length: count }, () => {
-      // Randomly assign a ladder (or no ladder for some teams)
-      const assignLadder = Math.random() < 0.85; // 85% of teams are in a ladder
-      const ladderId =
-        assignLadder && ladders.length > 0
-          ? ladders[Math.floor(Math.random() * ladders.length)].id
-          : undefined;
-
-      // Generate a base rating between 1000 and 1600
+      const ladderId = randomElement(ladders).id;
       const rating = randomRating(1000, 1600);
 
       return {
@@ -251,12 +250,11 @@ async function generateTeams(
     });
 
     // Create teams in batches
-    const batchSize = 10;
-    const batches = Math.ceil(count / batchSize);
+    const batches = Math.ceil(count / BATCH_SIZE);
 
     for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
-      const start = batchIndex * batchSize;
-      const end = Math.min(start + batchSize, count);
+      const start = batchIndex * BATCH_SIZE;
+      const end = Math.min(start + BATCH_SIZE, count);
       const batchParams = teamParams.slice(start, end);
 
       console.log(
@@ -387,11 +385,14 @@ async function generateMatches(
         // If there's a winner, determine who won based on rating
         let winnerId = undefined;
         if (hasWinner) {
+          // TODO: move all the rating stuff and ELO to separate file.
+          //
           const team1Rating = team1.rating || 1200;
           const team2Rating = team2.rating || 1200;
 
           // Calculate win probability using Elo formula
           const ratingDiff = team1Rating - team2Rating;
+          // TODO: This might actually be ELO .. need to check
           const team1WinProbability = 1 / (1 + Math.pow(10, -ratingDiff / 400));
 
           // Determine winner based on probability
@@ -399,24 +400,27 @@ async function generateMatches(
         }
 
         // Create match date within the last 30 days
-        const matchDate = randomRecentDate(30);
+        const playedOn = randomRecentDate(30).toISOString();
 
-        return {
+        const match = {
           ladderId,
           team1Id: team1.id,
           team2Id: team2.id,
           winnerId,
-          playedOn: matchDate.toISOString(),
+          playedOn,
         };
+
+        console.log("match", match);
+
+        return match;
       });
 
       // Create matches in batches
-      const batchSize = 10;
-      const batches = Math.ceil(ladderMatchCount / batchSize);
+      const batches = Math.ceil(ladderMatchCount / BATCH_SIZE);
 
       for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
-        const start = batchIndex * batchSize;
-        const end = Math.min(start + batchSize, ladderMatchCount);
+        const start = batchIndex * BATCH_SIZE;
+        const end = Math.min(start + BATCH_SIZE, ladderMatchCount);
         const batchParams = matchParams.slice(start, end);
 
         console.log(

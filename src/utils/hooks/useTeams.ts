@@ -9,15 +9,16 @@ import {
   Team,
   teamClient,
 } from "../amplify-helpers";
+import { PAGE_SIZE } from "../constants";
 
-export interface TeamWithPlayers extends Team {
+export interface MatchWithPlayers extends Team {
   player1Details?: Player | null;
   player2Details?: Player | null;
   ladderDetails?: Ladder | null;
 }
 
 export function useTeamList() {
-  const [teams, setTeams] = useState<TeamWithPlayers[]>([]);
+  const [teams, setTeams] = useState<MatchWithPlayers[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,7 +89,7 @@ export function useTeamList() {
               player1Details: player1,
               player2Details: player2,
               ladderDetails: ladder,
-            } as TeamWithPlayers;
+            } as MatchWithPlayers;
           } catch (err) {
             console.error(
               `Error fetching related data for team ${team.id}:`,
@@ -99,7 +100,7 @@ export function useTeamList() {
               player1Details: null,
               player2Details: null,
               ladderDetails: null,
-            } as TeamWithPlayers;
+            } as MatchWithPlayers;
           }
         });
 
@@ -193,7 +194,7 @@ export function useTeamDelete() {
   const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
 
   const deleteTeam = useCallback(
-    async (id: string, teams: TeamWithPlayers[]) => {
+    async (id: string, teams: MatchWithPlayers[]) => {
       // Reset any previous error for this team
       setDeleteErrors((prev) => ({ ...prev, [id]: "" }));
 
@@ -258,7 +259,7 @@ export function useTeamJoin() {
   const [joinError, setJoinError] = useState<string | null>(null);
 
   const joinTeam = useCallback(
-    async (teamId: string, currentPlayer: Player, teams: TeamWithPlayers[]) => {
+    async (teamId: string, currentPlayer: Player, teams: MatchWithPlayers[]) => {
       // Reset error state
       setJoinError(null);
 
@@ -519,7 +520,7 @@ export function useTeamLadder() {
   };
 }
 
-export function usePagination<T>(items: T[], itemsPerPage: number) {
+export function usePagination<T>(items: T[], itemsPerPage: number = PAGE_SIZE) {
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = Math.ceil(items.length / itemsPerPage);

@@ -1,5 +1,6 @@
 "use client";
 
+import { PAGE_SIZE } from "@/utils/constants";
 import {
   Alert,
   Box,
@@ -90,7 +91,6 @@ function TeamsPage() {
   } = useFilter(teams, teamFilter);
 
   // Pagination
-  const TEAMS_PER_PAGE = 5;
   const {
     currentPage,
     setCurrentPage,
@@ -99,7 +99,7 @@ function TeamsPage() {
     firstItemIndex,
     lastItemIndex,
     totalItems,
-  } = usePagination(filteredTeams, TEAMS_PER_PAGE);
+  } = usePagination(filteredTeams);
 
   // Dialogs
   const addTeamDialog = useDialog();
@@ -216,7 +216,7 @@ function TeamsPage() {
           </VStack>
 
           {/* Pagination controls */}
-          {filteredTeams.length > TEAMS_PER_PAGE && (
+          {filteredTeams.length > PAGE_SIZE && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

@@ -261,15 +261,15 @@ function LaddersPage() {
           </Alert.Description>
         </Alert.Root>
       ) : (
-        <Tabs.Root defaultValue={filteredLadders[0].id}>
+        <Tabs.Root defaultValue={filteredLadders[0].id} variant={"enclosed"}>
           <Tabs.List>
             {filteredLadders.map((ladder) => (
-              <Tabs.Trigger value={ladder.id}>{ladder.name}</Tabs.Trigger>
+              <Tabs.Trigger key={`trigger-${ladder.id}`} value={ladder.id}>{ladder.name}</Tabs.Trigger>
             ))}
           </Tabs.List>
 
           {filteredLadders.map((ladder) => (
-            <Tabs.Content value={ladder.id}>
+            <Tabs.Content key={`content-${ladder.id}`} value={ladder.id}>
               <Card.Root>
                 <Card.Header>
                   <HStack justifyContent="space-between" width="100%">
@@ -344,7 +344,7 @@ function TeamsInLadderTable({
 
   return (
     <Box>
-      <Tabs.Root defaultValue={"teams"}>
+      <Tabs.Root defaultValue={"teams"} variant={"enclosed"}>
         <Tabs.List>
           <Tabs.Trigger value="teams">Teams</Tabs.Trigger>
           <Tabs.Trigger value="matches">Matches</Tabs.Trigger>

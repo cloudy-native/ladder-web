@@ -28,17 +28,15 @@ const schema = a
     /* A ladder has many teams. */
     Ladder: a.model({
       name: a.string().required(),
-      description: a.string(),
+      description: a.string().required(),
       teams: a.hasMany("Team", "ladderId"),
       matches: a.hasMany("Match", "ladderId"),
-      createdAt: a.string(),
-      updatedAt: a.string(),
     }),
 
     /* A team can only be on one ladder and has exactly 2 player slots. */
     Team: a.model({
       name: a.string().required(),
-      ladderId: a.id(),
+      ladderId: a.id().required(),
       ladder: a.belongsTo("Ladder", "ladderId"),
       player1Id: a.id(),
       player1: a.belongsTo("Player", "player1Id"),
@@ -48,8 +46,6 @@ const schema = a
       team1: a.hasMany("Match", "team1Id"),
       team2: a.hasMany("Match", "team2Id"),
       winner: a.hasMany("Match", "winnerId"),
-      createdAt: a.string(),
-      updatedAt: a.string(),
     }),
 
     /* A player can only be in one team (as player1 or player2) */
@@ -61,8 +57,6 @@ const schema = a
       teamAsPlayer1: a.hasOne("Team", "player1Id"),
       teamAsPlayer2: a.hasOne("Team", "player2Id"),
       avatar: a.url(),
-      createdAt: a.string(),
-      updatedAt: a.string(),
     }),
 
     /* A Match belongs to a ladder, and has 2 teams */
@@ -76,8 +70,6 @@ const schema = a
       winnerId: a.id(),
       winner: a.belongsTo("Team", "winnerId"),
       playedOn: a.string(),
-      createdAt: a.string(),
-      updatedAt: a.string(),
     }),
   })
   .authorization((allow) => [allow.guest(), allow.authenticated()]);
