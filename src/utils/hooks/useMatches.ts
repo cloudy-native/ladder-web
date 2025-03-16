@@ -3,139 +3,74 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Ladder,
-  ladderClient,
   Match,
   matchClient,
   Team,
-  teamClient
-} from "../amplify-helpers";
+  teamClient,
+} from "@/utils/amplify-helpers";
+import { filterNotNull } from "../data";
 
-export interface MatchWithDetails extends Match {
-  team1Details?: Team | null;
-  team2Details?: Team | null;
-  winnerDetails?: Team | null;
-  ladderDetails?: Ladder | null;
+/**
+ * Represents a match with its associated ladder and teams.
+ */
+export interface MatchWithLadderAndTeams {
+  match: Match;
+  ladder: Ladder | null;
+  team1: Team | null;
+  team2: Team | null;
+  winner?: Team | null;
 }
 
-// Hook to fetch all matches with team details
+/**
+ * Hook to fetch all matches along with their associated ladder and team details.
+ *
+ * @returns An object containing:
+ *   - matches: An array of matches with ladder and team details.
+ *   - loading: A boolean indicating whether the data is currently being fetched.
+ *   - error: A string containing an error message if an error occurred during fetching, or null if no error.
+ *   - refreshMatches: A function to manually refresh the matches data.
+ */
 export function useMatchList() {
-  const [matches, setMatches] = useState<MatchWithDetails[]>([]);
+  const [matches, setMatches] = useState<MatchWithLadderAndTeams[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Fetches all matches from the database and populates them with their related ladder and team data.
+   */
   const fetchMatches = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const { data: matchData, errors } = await matchClient().list({
-        selectionSet: [
-          "id",
-          "ladderId",
-          "team1Id",
-          "team2Id",
-          "winnerId",
-          "playedOn",
-        ],
-      });
+      // Fetch all matches
+      const { data: matchData, errors: matchErrors } =
+        await matchClient().list();
 
-      if (errors) {
-        console.error("Error fetching matches:", errors);
+      if (matchErrors) {
+        console.error("Error fetching matches:", matchErrors);
         setError("Failed to load matches");
         setMatches([]);
         return;
       }
 
-      // Ensure we only use valid match objects to prevent UI errors
-      if (matchData && Array.isArray(matchData)) {
-        const validMatches = matchData.filter(
-          (match) =>
-            match !== null &&
-            typeof match === "object" &&
-            match.id &&
-            match.team1Id &&
-            match.team2Id
-        );
+      console.log(`Fetched ${matchData.length} matches`);
 
-        console.log(`Fetched ${validMatches.length} matches`);
+      // Create an array of promises to fetch related data for each match in parallel
+      const promises = matchData.map(async (match) => {
+        return {
+          match,
+          team1: await match.team1(), // Fetch team1 details
+          team2: await match.team2(), // Fetch team2 details
+          winner: await match.winner(), // Fetch winner details
+          ladder: await match.ladder(), // Fetch ladder details
+        } as unknown as MatchWithLadderAndTeams;
+      });
 
-        // Create an array of promises to fetch related data for each match in parallel
-        const matchesWithDetailsPromises = validMatches.map(async (match) => {
-          try {
-            // Fetch team1 details
-            let team1 = null;
-            if (match.team1Id) {
-              const team1Result = await teamClient().get({
-                id: match.team1Id,
-              });
-              team1 = team1Result.data;
-            }
+      // Wait for all fetches to complete
+      const matchesWithDetails = await Promise.all(promises);
 
-            // Fetch team2 details
-            let team2 = null;
-            if (match.team2Id) {
-              const team2Result = await teamClient().get({
-                id: match.team2Id,
-              });
-              team2 = team2Result.data;
-            }
-
-            // Fetch winner details
-            let winner = null;
-            if (match.winnerId) {
-              const winnerResult = await teamClient().get({
-                id: match.winnerId,
-              });
-              winner = winnerResult.data;
-            }
-
-            // Fetch ladder details
-            let ladder = null;
-            if (match.ladderId) {
-              const ladderResult = await ladderClient().get({
-                id: match.ladderId,
-              });
-              ladder = ladderResult.data;
-            }
-
-            return {
-              ...match,
-              team1Details: team1,
-              team2Details: team2,
-              winnerDetails: winner,
-              ladderDetails: ladder,
-            } as MatchWithDetails;
-          } catch (err) {
-            console.error(
-              `Error fetching related data for match ${match.id}:`,
-              err
-            );
-            return {
-              ...match,
-              team1Details: null,
-              team2Details: null,
-              winnerDetails: null,
-              ladderDetails: null,
-            } as MatchWithDetails;
-          }
-        });
-
-        // Wait for all fetches to complete
-        const matchesWithDetails = await Promise.all(
-          matchesWithDetailsPromises
-        );
-
-        // Sort by creation date, newest first
-        // TODO: sort by ???
-        // matchesWithDetails.sort(
-        //   (a, b) =>
-        //     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        // );
-
-        setMatches(matchesWithDetails);
-      } else {
-        setMatches([]);
-      }
+      setMatches(matchesWithDetails);
     } catch (error) {
       console.error("Error fetching matches:", error);
       setError("An unexpected error occurred while loading matches");
@@ -145,6 +80,7 @@ export function useMatchList() {
     }
   }, []);
 
+  // Fetch matches on component mount
   useEffect(() => {
     fetchMatches();
   }, [fetchMatches]);
@@ -157,15 +93,40 @@ export function useMatchList() {
   };
 }
 
-// Hook to fetch matches for a specific ladder
+/**
+ * Represents a ladder with its associated matches and teams.
+ */
+export type MatchesWithTeams = {
+  match: Match;
+  team1: Team | null;
+  team2: Team | null;
+  winner: Team | null;
+};
+
+/**
+ * Hook to fetch matches for a specific ladder along with their associated team details.
+ *
+ * @param ladderId - The ID of the ladder to fetch matches for.
+ * @returns An object containing:
+ *   - matches: An array of matches with team details for the specified ladder.
+ *   - loading: A boolean indicating whether the data is currently being fetched.
+ *   - error: A string containing an error message if an error occurred during fetching, or null if no error.
+ *   - refreshMatches: A function to manually refresh the matches data.
+ */
 export function useMatchesForLadder(ladderId: string) {
-  const [matches, setMatches] = useState<MatchWithDetails[]>([]);
+  const [matchesWithTeams, setMatchesWithTeams] = useState<MatchesWithTeams[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Fetches matches for the specified ladder and populates them with their related team data.
+   */
   const fetchMatches = useCallback(async () => {
+    // If no ladder ID is provided, clear the matches and return
     if (!ladderId) {
-      setMatches([]);
+      setMatchesWithTeams([]);
       setLoading(false);
       return;
     }
@@ -174,133 +135,113 @@ export function useMatchesForLadder(ladderId: string) {
     setError(null);
 
     try {
+      // Fetch matches for the specified ladder
       const { data: matchData, errors } = await matchClient().list({
         filter: { ladderId: { eq: ladderId } },
-        selectionSet: [
-          "id",
-          "ladderId",
-          "team1Id",
-          "team2Id",
-          "winnerId",
-        ],
       });
 
       if (errors) {
         console.error(`Error fetching matches for ladder ${ladderId}:`, errors);
         setError("Failed to load matches for this ladder");
-        setMatches([]);
+        setMatchesWithTeams([]);
         return;
       }
 
-      // Ensure we only use valid match objects to prevent UI errors
-      if (matchData && Array.isArray(matchData)) {
-        const validMatches = matchData.filter(
-          (match) =>
-            match !== null &&
-            typeof match === "object" &&
-            match.id &&
-            match.team1Id &&
-            match.team2Id
-        );
+      console.log(`Fetched ${matchData.length} matches for ladder ${ladderId}`);
 
-        console.log(
-          `Fetched ${validMatches.length} matches for ladder ${ladderId}`
-        );
-
-        // Create an array of promises to fetch related data for each match in parallel
-        const matchesWithDetailsPromises = validMatches.map(async (match) => {
-          try {
-            // Fetch team1 details
-            let team1 = null;
-            if (match.team1Id) {
-              const team1Result = await teamClient().get({
-                id: match.team1Id,
-              });
-              team1 = team1Result.data;
-            }
-
-            // Fetch team2 details
-            let team2 = null;
-            if (match.team2Id) {
-              const team2Result = await teamClient().get({
-                id: match.team2Id,
-              });
-              team2 = team2Result.data;
-            }
-
-            // Fetch winner details
-            let winner = null;
-            if (match.winnerId) {
-              const winnerResult = await teamClient().get({
-                id: match.winnerId,
-              });
-              winner = winnerResult.data;
-            }
-
-            return {
-              ...match,
-              team1Details: team1,
-              team2Details: team2,
-              winnerDetails: winner,
-              ladderDetails: null, // We already have the ladder ID
-            } as MatchWithDetails;
-          } catch (err) {
-            console.error(
-              `Error fetching related data for match ${match.id}:`,
-              err
-            );
-            return {
-              ...match,
-              team1Details: null,
-              team2Details: null,
-              winnerDetails: null,
-              ladderDetails: null,
-            } as MatchWithDetails;
+      // Create an array of promises to fetch related data for each match in parallel
+      const promises = matchData.map(async (match) => {
+        try {
+          // Fetch team1 details
+          let team1 = null;
+          if (match.team1Id) {
+            const team1Result = await teamClient().get({
+              id: match.team1Id,
+            });
+            team1 = team1Result.data;
           }
-        });
 
-        // Wait for all fetches to complete
-        const matchesWithDetails = await Promise.all(
-          matchesWithDetailsPromises
-        );
+          // Fetch team2 details
+          let team2 = null;
+          if (match.team2Id) {
+            const team2Result = await teamClient().get({
+              id: match.team2Id,
+            });
+            team2 = team2Result.data;
+          }
 
-        // Sort by creation date, newest first
-        // TODO: sort by ???
-        // matchesWithDetails.sort(
-        //   (a, b) =>
-        //     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        // );
+          // Fetch winner details
+          let winner = null;
+          if (match.winnerId) {
+            const winnerResult = await teamClient().get({
+              id: match.winnerId,
+            });
+            winner = winnerResult.data;
+          }
 
-        setMatches(matchesWithDetails);
-      } else {
-        setMatches([]);
-      }
+          return {
+            match,
+            team1,
+            team2,
+            winner,
+          } as unknown as MatchesWithTeams;
+        } catch (err) {
+          console.error(
+            `Error fetching related data for match ${match.id}:`,
+            err
+          );
+          return null;
+        }
+      });
+
+      // Wait for all fetches to complete
+      const result = await Promise.all(promises);
+
+      // Filter out any null results (failed fetches)
+      setMatchesWithTeams(filterNotNull(result));
     } catch (error) {
       console.error(`Error fetching matches for ladder ${ladderId}:`, error);
       setError("An unexpected error occurred while loading matches");
-      setMatches([]);
+      setMatchesWithTeams([]);
     } finally {
       setLoading(false);
     }
   }, [ladderId]);
 
+  // Fetch matches on component mount or when ladderId changes
   useEffect(() => {
     fetchMatches();
   }, [fetchMatches]);
 
   return {
-    matches,
+    matchesWithTeams,
     loading,
     error,
     refreshMatches: fetchMatches,
   };
 }
 
-// Hook to create a match and update ratings
+/**
+ * Hook to create a new match and update team ratings based on the match result.
+ *
+ * @returns An object containing:
+ *   - createMatch: A function to create a new match.
+ *   - isCreating: A boolean indicating whether a match is currently being created.
+ *   - createError: A string containing an error message if an error occurred during match creation, or null if no error.
+ */
 export function useMatchCreate() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  /**
+   * Creates a new match and updates the ratings of the participating teams if a winner is specified.
+   *
+   * @param ladderId - The ID of the ladder the match belongs to.
+   * @param team1Id - The ID of the first team.
+   * @param team2Id - The ID of the second team.
+   * @param winnerId - (Optional) The ID of the winning team.
+   * @returns The newly created match object, or null if an error occurred.
+   */
   const createMatch = useCallback(
     async (
       ladderId: string,
@@ -325,7 +266,12 @@ export function useMatchCreate() {
       }
 
       setIsCreating(true);
-      console.log("Creating match with params:", { ladderId, team1Id, team2Id, winnerId });
+      console.log("Creating match with params:", {
+        ladderId,
+        team1Id,
+        team2Id,
+        winnerId,
+      });
 
       try {
         console.log("About to call matchClient().create()");
@@ -370,7 +316,13 @@ export function useMatchCreate() {
     []
   );
 
-  // Update team ratings based on match result
+  /**
+   * Updates the ratings of the participating teams based on the match result using the Elo rating system.
+   *
+   * @param team1Id - The ID of the first team.
+   * @param team2Id - The ID of the second team.
+   * @param winnerId - The ID of the winning team.
+   */
   const updateRatings = async (
     team1Id: string,
     team2Id: string,
@@ -441,66 +393,72 @@ export function useMatchCreate() {
   };
 }
 
-// Hook to get teams for a specific ladder
-export function useTeamsForMatch(ladderId: string) {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+/**
+ * TODO: this is "useTeamsForLadder", which we have already
+ * Hook to get teams for a specific ladder.
+ *
+ * @param ladderId - The ID of the ladder to fetch teams for.
+ * @returns An object containing:
+ *   - teams: An array of teams in the specified ladder.
+ *   - loading: A boolean indicating whether the data is currently being fetched.
+ *   - error: A string containing an error message if an error occurred during fetching, or null if no error.
+ *   - refreshTeams: A function to manually refresh the teams data.
+ */
+// export function useTeamsForMatch(ladderId: string) {
+//   const [teams, setTeams] = useState<Team[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState<string | null>(null);
 
-  const fetchTeams = useCallback(async () => {
-    if (!ladderId) {
-      setTeams([]);
-      setLoading(false);
-      return;
-    }
+//   /**
+//    * Fetches teams for the specified ladder.
+//    */
+//   const fetchTeams = useCallback(async () => {
+//     // If no ladder ID is provided, clear the teams and return
+//     if (!ladderId) {
+//       setTeams([]);
+//       setLoading(false);
+//       return;
+//     }
 
-    setLoading(true);
-    setError(null);
+//     setLoading(true);
+//     setError(null);
 
-    try {
-      const { data: teamData, errors } = await teamClient().list({
-        filter: { ladderId: { eq: ladderId } },
-        selectionSet: ["id", "name", "rating", "player1Id", "player2Id"],
-      });
+//     try {
+//       // Fetch teams for the specified ladder
+//       const { data: teamData, errors } = await teamClient().list({
+//         filter: { ladderId: { eq: ladderId } },
+//         selectionSet: ["id", "name", "rating", "player1Id", "player2Id"],
+//       });
 
-      if (errors) {
-        console.error(`Error fetching teams for ladder ${ladderId}:`, errors);
-        setError("Failed to load teams for this ladder");
-        setTeams([]);
-        return;
-      }
+//       if (errors) {
+//         console.error(`Error fetching teams for ladder ${ladderId}:`, errors);
+//         setError("Failed to load teams for this ladder");
+//         setTeams([]);
+//         return;
+//       }
 
-      // Ensure we only use valid team objects to prevent UI errors
-      if (teamData && Array.isArray(teamData)) {
-        const validTeams = teamData.filter(
-          (team) =>
-            team !== null && typeof team === "object" && team.id && team.name
-        );
+//       // Sort by rating
+//       teamData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
-        // Sort by rating
-        validTeams.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+//       setTeams(teamData);
+//     } catch (error) {
+//       console.error(`Error fetching teams for ladder ${ladderId}:`, error);
+//       setError("An unexpected error occurred while loading teams");
+//       setTeams([]);
+//     } finally {
+//       setLoading(false);
+//     }
+//   }, [ladderId]);
 
-        setTeams(validTeams);
-      } else {
-        setTeams([]);
-      }
-    } catch (error) {
-      console.error(`Error fetching teams for ladder ${ladderId}:`, error);
-      setError("An unexpected error occurred while loading teams");
-      setTeams([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [ladderId]);
+//   // Fetch teams on component mount or when ladderId changes
+//   useEffect(() => {
+//     fetchTeams();
+//   }, [fetchTeams]);
 
-  useEffect(() => {
-    fetchTeams();
-  }, [fetchTeams]);
-
-  return {
-    teams,
-    loading,
-    error,
-    refreshTeams: fetchTeams,
-  };
-}
+//   return {
+//     teams,
+//     loading,
+//     error,
+//     refreshTeams: fetchTeams,
+//   };
+// }

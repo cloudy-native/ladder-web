@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import {
   Ladder,
   ladderClient,
@@ -8,26 +7,34 @@ import {
   playerClient,
   Team,
   teamClient,
-} from "../amplify-helpers";
+} from "@/utils/amplify-helpers";
+import { useCallback, useEffect, useState } from "react";
 import {
   createLadder as createLadderApi,
   deleteLadder as deleteLadderApi,
-  getLaddersWithTeamsAndMatches,
-  LadderWithTeamsAndMatches
-} from "../data-fetchers";
+  getAllLadders,
+  TeamWithPlayers,
+} from "@/utils/crudl";
 
+/**
+ * Hook for fetching a list of all ladders.
+ *
+ * @returns An object containing the ladders array, a loading state, an error state, and a function to refresh the list.
+ */
 export function useLadderList() {
-  const [ladders, setLadders] = useState<LadderWithTeamsAndMatches[]>([]);
+  const [ladders, setLadders] = useState<Ladder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Fetches all ladders from the database.
+   */
   const getLaddersData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const ladderData = await getLaddersWithTeamsAndMatches();
-      setLadders(ladderData);
+      setLadders(await getAllLadders());
     } catch (err) {
       console.error("Error fetching ladders:", err);
       setError("Failed to load ladders");
@@ -41,6 +48,9 @@ export function useLadderList() {
     getLaddersData();
   }, [getLaddersData]);
 
+  /**
+   * Refreshes the list of ladders by re-fetching the data.
+   */
   const refreshLadders = useCallback(() => {
     return getLaddersData();
   }, [getLaddersData]);
@@ -53,12 +63,21 @@ export function useLadderList() {
   };
 }
 
+/**
+ * Hook for managing ladders selection and related data.
+ *
+ * @returns An object containing ladders, loading state, error state, selected ladder, setter for selected ladder,
+ *          a function to refresh ladders, a function to check if a team is in a ladder, and a function to get a ladder's name.
+ */
 export function useLadderSelect() {
   const [ladders, setLadders] = useState<Ladder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLadder, setSelectedLadder] = useState<Ladder | null>(null);
 
+  /**
+   * Fetches ladders from the database.
+   */
   const fetchLadders = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -103,7 +122,14 @@ export function useLadderSelect() {
     fetchLadders();
   }, [fetchLadders]);
 
-  // Helper functions for ladder operations
+  /**
+   * Checks if a team is in a specific ladder.
+   *
+   * @param teamId - The ID of the team to check.
+   * @param ladderId - The ID of the ladder to check against.
+   * @param teams - The list of teams to search.
+   * @returns True if the team is in the ladder, false otherwise.
+   */
   const isTeamInLadder = useCallback(
     (teamId: string, ladderId: string, teams: Team[]) => {
       const team = teams.find((team) => team.id === teamId);
@@ -112,6 +138,12 @@ export function useLadderSelect() {
     []
   );
 
+  /**
+   * Gets the name of a ladder by its ID.
+   *
+   * @param ladderId - The ID of the ladder to find.
+   * @returns The name of the ladder or "Unknown Ladder" if not found.
+   */
   const getLadderName = useCallback(
     (ladderId: string) => {
       const ladder = ladders.find((ladder) => ladder.id === ladderId);
@@ -132,10 +164,22 @@ export function useLadderSelect() {
   };
 }
 
+/**
+ * Hook for creating a new ladder.
+ *
+ * @returns An object containing the createLadder function, a loading state, and an error state.
+ */
 export function useLadderCreate() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  /**
+   * Creates a new ladder.
+   *
+   * @param name - The name of the new ladder.
+   * @param description - An optional description for the ladder.
+   * @returns The newly created Ladder object.
+   */
   const createLadder = useCallback(
     async (name: string, description: string = "") => {
       setCreateError(null);
@@ -149,8 +193,7 @@ export function useLadderCreate() {
       setIsCreating(true);
 
       try {
-        const createdLadder = await createLadderApi(name, description);
-        return createdLadder;
+        return await createLadderApi(name, description);
       } catch (error) {
         console.error("Error creating ladder:", error);
         setCreateError("Failed to create ladder. Please try again.");
@@ -169,12 +212,23 @@ export function useLadderCreate() {
   };
 }
 
+/**
+ * Hook for deleting a ladder.
+ *
+ * @returns An object containing the deleteLadder function, a record of deleting states for each ladder, and a record of error messages for each ladder.
+ */
 export function useLadderDelete() {
   const [deletingLadders, setDeletingLadders] = useState<
     Record<string, boolean>
   >({});
   const [deleteError, setDeleteError] = useState<Record<string, string>>({});
 
+  /**
+   * Deletes a ladder by its ID.
+   *
+   * @param id - The ID of the ladder to delete.
+   * @returns True if the ladder was successfully deleted, false otherwise.
+   */
   const deleteLadder = useCallback(async (id: string) => {
     // Reset any previous error for this ladder
     setDeleteError((prev) => ({ ...prev, [id]: "" }));
@@ -205,10 +259,12 @@ export function useLadderDelete() {
   };
 }
 
-export interface TeamWithPlayers extends Team {
-  playersList?: Player[];
-}
-
+/**
+ * Hook for fetching teams associated with a specific ladder.
+ *
+ * @param ladderId - The ID of the ladder to fetch teams for.
+ * @returns An object containing the list of teams with players, a loading state, an error state, and a function to refresh the list.
+ */
 export function useTeamsForLadder(ladderId: string) {
   const [teamsWithPlayers, setTeamsWithPlayers] = useState<TeamWithPlayers[]>(
     []
@@ -216,87 +272,85 @@ export function useTeamsForLadder(ladderId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  /**
+   * Fetches teams and their associated players for the specified ladder.
+   */
   const fetchTeams = useCallback(async () => {
     setLoading(true);
     setError(false);
 
     try {
       // Fetch teams for this ladder using filter
-      const teamsResult = await teamClient().list({
+      const { data: teamsData, errors: teamsErrors } = await teamClient().list({
         filter: { ladderId: { eq: ladderId } },
-        selectionSet: [
-          "id",
-          "name",
-          "rating",
-          "ladderId",
-          "player1Id",
-          "player2Id",
-        ],
       });
 
-      if (teamsResult.errors) {
-        console.error("Error fetching teams for ladder:", teamsResult.errors);
+      if (teamsErrors) {
+        console.error("Error fetching teams for ladder:", teamsErrors);
         setError(true);
+        setTeamsWithPlayers([]);
+
         return;
       }
 
-      const teams = teamsResult.data || [];
+      if (!teamsData || !Array.isArray(teamsData)) {
+        console.error("Invalid teams data:", teamsData);
+        setError(true);
+        setTeamsWithPlayers([]);
 
-      // If we have teams, fetch the players for each one
-      if (teams.length > 0) {
-        let teamsData: TeamWithPlayers[] = [];
+        return;
+      }
 
-        // Create an array of promises to fetch players for all teams in parallel
-        const teamsWithPlayersPromises = teams.map(async (team) => {
-          if (!team || !team.id) return null;
+      // Create an array of promises to fetch players for all teams in parallel
+      const teamsWithPlayersPromises = teamsData.map(async (team) => {
+        try {
+          let player1: Player | null = null;
+          let player2: Player | null = null;
 
-          try {
-            const players: Player[] = [];
-
-            // Fetch player1 if it exists
+          {
             if (team.player1Id) {
               const player1Result = await playerClient().get({
                 id: team.player1Id,
               });
               if (player1Result.data) {
-                players.push(player1Result.data);
+                player1 = player1Result.data;
               }
             }
+          }
 
-            // Fetch player2 if it exists
+          {
             if (team.player2Id) {
               const player2Result = await playerClient().get({
                 id: team.player2Id,
               });
               if (player2Result.data) {
-                players.push(player2Result.data);
+                player2 = player2Result.data;
               }
             }
-
-            // Return the team with its players
-            return {
-              ...team,
-              playersList: players,
-            } as TeamWithPlayers;
-          } catch (err) {
-            console.error("Error fetching players for team:", err);
-            return null;
           }
-        });
 
-        // Wait for all team fetches to complete
-        const results = await Promise.all(teamsWithPlayersPromises);
+          // Return the team with its players
+          return {
+            team,
+            player1,
+            player2,
+          };
+        } catch (err) {
+          console.error("Error fetching players for team:", err);
+          return null;
+        }
+      });
 
-        // Filter out any null results from errors
-        teamsData = results.filter(Boolean) as TeamWithPlayers[];
+      // Wait for all team fetches to complete
+      const result = await Promise.all(teamsWithPlayersPromises);
 
-        // Sort teams by rating in descending order
-        teamsData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      const validTeams = result.filter(
+        (teamWithPlayers) => teamWithPlayers !== null
+      ) as unknown as TeamWithPlayers[];
+      // Sort teams by rating in descending order
+      validTeams.sort((a, b) => b.team.rating - a.team.rating);
 
-        setTeamsWithPlayers(teamsData);
-      } else {
-        setTeamsWithPlayers([]);
-      }
+      setTeamsWithPlayers(validTeams);
     } catch (err) {
       console.error("Exception fetching teams for ladder:", err);
       setError(true);

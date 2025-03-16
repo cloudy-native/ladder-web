@@ -1,5 +1,6 @@
 "use client";
 
+import { formatPlayerName } from "@/utils/data";
 import {
   Alert,
   Box,
@@ -37,8 +38,8 @@ import {
   useLadderCreate,
   useLadderDelete,
   useLadderList,
+  useMatchesForLadder,
   useTeamsForLadder,
-  useMatchesForLadder
 } from "../../utils/hooks";
 
 export function ClientOnly() {
@@ -56,17 +57,18 @@ function LaddersPage() {
   // Custom hooks for ladder data and operations
   const { ladders, loading, refreshLadders } = useLadderList();
   const { createLadder, isCreating, createError } = useLadderCreate();
-  const { deleteLadder,  deleteError } = useLadderDelete();
+  const { deleteLadder, deleteError } = useLadderDelete();
 
   // Filter hook
   const ladderFilter = useCallback((ladder: Ladder, searchText: string) => {
     // Check ladder name
-    if (ladder.name.toLowerCase().includes(searchText)) return true;
+    if (ladder.name.toLowerCase().includes(searchText.toLowerCase()))
+      return true;
 
     // Check ladder description if it exists
     if (
       ladder.description &&
-      ladder.description.toLowerCase().includes(searchText)
+      ladder.description.toLowerCase().includes(searchText.toLowerCase())
     ) {
       return true;
     }
@@ -106,10 +108,10 @@ function LaddersPage() {
     }
   };
 
-  const confirmDeleteLadder = (ladder: Ladder) => {
-    setLadderToDelete(ladder);
-    deleteDialogRef.setOpen(true);
-  };
+  // const confirmDeleteLadder = (ladder: Ladder) => {
+  //   setLadderToDelete(ladder);
+  //   deleteDialogRef.setOpen(true);
+  // };
 
   const handleDeleteLadder = async () => {
     if (ladderToDelete) {
@@ -127,11 +129,11 @@ function LaddersPage() {
   };
 
   // Format player names
-  function formatPlayers(players?: Player[]) {
+  function formatPlayers(players?: (Player | null)[]) {
     if (!players || players.length === 0) return "—";
 
     return players
-      .map((player) => `${player.givenName} ${player.familyName}`)
+      .map((player) => (player ? formatPlayerName(player) : "—"))
       .join(", ");
   }
 
@@ -264,7 +266,9 @@ function LaddersPage() {
         <Tabs.Root defaultValue={filteredLadders[0].id} variant={"enclosed"}>
           <Tabs.List>
             {filteredLadders.map((ladder) => (
-              <Tabs.Trigger key={`trigger-${ladder.id}`} value={ladder.id}>{ladder.name}</Tabs.Trigger>
+              <Tabs.Trigger key={`trigger-${ladder.id}`} value={ladder.id}>
+                {ladder.name}
+              </Tabs.Trigger>
             ))}
           </Tabs.List>
 
@@ -311,7 +315,7 @@ function TeamsInLadderTable({
   formatPlayers,
 }: {
   ladder: Ladder;
-  formatPlayers: (players?: Player[]) => string;
+  formatPlayers: (players?: (Player | null)[]) => string;
 }) {
   const {
     teamsWithPlayers,
@@ -319,7 +323,7 @@ function TeamsInLadderTable({
     error: errorTeams,
   } = useTeamsForLadder(ladder.id);
   const {
-    matches,
+    matchesWithTeams,
     loading: loadingMatches,
     error: errorMatches,
   } = useMatchesForLadder(ladder.id);
@@ -350,7 +354,7 @@ function TeamsInLadderTable({
           <Tabs.Trigger value="matches">Matches</Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="teams">
-          <Text fontSize="sm"  mb={3}>
+          <Text fontSize="sm" mb={3}>
             {teamsWithPlayers.length} team
             {teamsWithPlayers.length !== 1 ? "s" : ""} in ladder:
           </Text>
@@ -366,11 +370,13 @@ function TeamsInLadderTable({
             </Table.Header>
             <Table.Body>
               {teamsWithPlayers.map((team, index) => (
-                <Table.Row key={team.id}>
-                  <Table.Cell >{index + 1}</Table.Cell>
-                  <Table.Cell >{team.name}</Table.Cell>
-                  <Table.Cell>{formatPlayers(team.playersList)}</Table.Cell>
-                  <Table.Cell >{team.rating}</Table.Cell>
+                <Table.Row key={team.team.id}>
+                  <Table.Cell>{index + 1}</Table.Cell>
+                  <Table.Cell>{team.team.name}</Table.Cell>
+                  <Table.Cell>
+                    {formatPlayers([team.player1, team.player2])}
+                  </Table.Cell>
+                  <Table.Cell>{team.team.rating}</Table.Cell>
                 </Table.Row>
               ))}
             </Table.Body>
@@ -387,12 +393,12 @@ function TeamsInLadderTable({
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {matches.map((match, index) => (
-                <Table.Row key={match.id}>
-                  <Table.Cell >{index + 1}</Table.Cell>
-                  <Table.Cell >{match?.team1Details?.name}</Table.Cell>
-                  <Table.Cell >{match?.team2Details?.name}</Table.Cell>
-                  <Table.Cell >{match?.winnerDetails?.name}</Table.Cell>
+              {matchesWithTeams.map((match, index) => (
+                <Table.Row key={match.match.id}>
+                  <Table.Cell>{index + 1}</Table.Cell>
+                  <Table.Cell>{match.team1?.name}</Table.Cell>
+                  <Table.Cell>{match.team2?.name}</Table.Cell>
+                  <Table.Cell>{match.winner?.name}</Table.Cell>
                 </Table.Row>
               ))}
             </Table.Body>

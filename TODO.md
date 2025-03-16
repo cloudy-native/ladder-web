@@ -6,3 +6,25 @@
 - [ ] There's a lot of confusion about the hook for ladders, players, and matches. We need separate hooks: Players for Team, Teams for Ladder, ...
 - [ ] Figure out how to do more with styling. For example, default variant for tabs
 - [ ] Pagination defaults to 10, not PAGE_SIZE for some reason
+- [ ] Make sure all CRUDL functions have goog names and accurate return types
+- [ ] Implement singles Ladders and Team Ladders
+  - [ ] Create new SinglesLadder and TeamLadder
+  - [ ] Create new SinglesMatch and DoublesMatch
+  - [ ] Change fields of Match (aka DoublesMatch) to team1 and team2
+- [ ] Move all data access to utility files to keep the layout clean
+  - [ ] Even include list operations
+  - [ ] Unify error checking
+  - [ ] Don't confuse things with selectionSet: Just call get() on dependant entities
+  - [ ] Simplify interfaces
+- [ ] Change all imports to '@' notation
+- [ ] No single statement block... everything inside {}
+- [ ] In CRUDL exception handling, unify the error condition. Do we rethrow the error after the CRUDL operation? Or do we handle it with the same message in 2 places?
+- [ ] Probably already covered this, but don't call playerClient() and other in the client coe. Always delegate to the encapsulations
+- [ ] And just to emphasize. playerClient() et al only appear in crudl functions
+- [ ] Use a utility nonNull<T>(array: (T | null)[]) everywhere its valid
+- [ ] Create ELO.ts for all ratings-related functionality
+- [ ] How do team matches affect player ratings. Is a team rating just a combination of player ratings?
+- [ ] Use formatPlayerName() everywhere
+- [ ] Add ladder to TeamCard
+- [ ] Add logic in all places to highlight current players
+- [ ] Create index.ts for components and check we import from directory instead

@@ -1,6 +1,18 @@
 "use client";
 
+import { Pagination, SearchInput } from "@/components/shared";
+import {
+  CreateTeamDialog,
+  TeamCard
+} from "@/components/teams";
 import { PAGE_SIZE } from "@/utils/constants";
+import { TeamWithPlayers } from "@/utils/crudl";
+import { formatPlayerName } from "@/utils/data";
+import {
+  useFilter,
+  usePagination,
+  useTeamList,
+} from "@/utils/hooks";
 import {
   Alert,
   Box,
@@ -16,19 +28,6 @@ import {
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import { IoAddCircle, IoRefresh } from "react-icons/io5";
-import { Pagination, SearchInput } from "../../components/shared";
-import {
-  CreateTeamDialog,
-  JoinTeamDialog,
-  LadderManager,
-  TeamCard,
-} from "../../components/teams";
-import {
-  TeamWithPlayers,
-  useFilter,
-  usePagination,
-  useTeamList,
-} from "../../utils/hooks";
 
 export function ClientOnly() {
   return (
@@ -43,40 +42,19 @@ export function ClientOnly() {
 
 function TeamsPage() {
   // Custom hooks
-  const { teams, loading, refreshTeams } = useTeamList();
+  const { teamsWithPlayers, loading, refreshTeams } = useTeamList();
 
   // Filter hook
   const teamFilter = useCallback(
     (team: TeamWithPlayers, searchText: string) => {
       // Check team name
-      if (team.name.toLowerCase().includes(searchText)) return true;
+      if (team.team.name.toLowerCase().includes(searchText.toLowerCase())) return true;
 
       // Check player names
-      if (
-        team.player1Details &&
-        `${team.player1Details.givenName} ${team.player1Details.familyName}`
-          .toLowerCase()
-          .includes(searchText)
-      ) {
+      if (team.player1 && formatPlayerName(team.player1).includes(searchText.toLowerCase()))
         return true;
-      }
-
-      if (
-        team.player2Details &&
-        `${team.player2Details.givenName} ${team.player2Details.familyName}`
-          .toLowerCase()
-          .includes(searchText)
-      ) {
+      if (team.player2 && formatPlayerName(team.player2).includes(searchText.toLowerCase()))
         return true;
-      }
-
-      // Check ladder name
-      if (
-        team.ladderDetails &&
-        team.ladderDetails.name.toLowerCase().includes(searchText)
-      ) {
-        return true;
-      }
 
       return false;
     },
@@ -88,7 +66,7 @@ function TeamsPage() {
     setFilterText,
     filteredItems: filteredTeams,
     clearFilter,
-  } = useFilter(teams, teamFilter);
+  } = useFilter(teamsWithPlayers, teamFilter);
 
   // Pagination
   const {
@@ -104,7 +82,7 @@ function TeamsPage() {
   // Dialogs
   const addTeamDialog = useDialog();
   const joinTeamDialog = useDialog();
-  const ladderDialog = useDialog();
+  // const ladderDialog = useDialog();
 
   // Selected team state
   const [selectedTeam, setSelectedTeam] = useState<TeamWithPlayers | null>(
@@ -128,11 +106,11 @@ function TeamsPage() {
 
   // Handle ladder management
   // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-  const handleManageLadder = (team: TeamWithPlayers, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click event
-    setSelectedTeam(team);
-    ladderDialog.setOpen(true);
-  };
+  // const handleManageLadder = (team: TeamWithPlayers, e: React.MouseEvent) => {
+  //   e.stopPropagation(); // Prevent card click event
+  //   setSelectedTeam(team);
+  //   ladderDialog.setOpen(true);
+  // };
 
   return (
     <Box>
@@ -153,7 +131,6 @@ function TeamsPage() {
           />
         </HStack>
       </Box>
-
       {/* Search input */}
       <Box mb={4}>
         <SearchInput
@@ -162,33 +139,30 @@ function TeamsPage() {
           placeholder="Search by team name, player, or ladder..."
         />
       </Box>
-
-      {/* Ladder Manager Dialog */}
-      {selectedTeam && (
+      Ladder Manager Dialog
+      {/* {selectedTeam && (
         <LadderManager
           team={selectedTeam}
           dialogRef={ladderDialog}
           onLadderChanged={refreshTeams}
         />
-      )}
-
+      )} */}
       {/* Join Team Dialog */}
-      {selectedTeam && (
+      {/* {selectedTeam && (
         <JoinTeamDialog
           team={selectedTeam}
           dialogRef={joinTeamDialog}
           onTeamJoined={refreshTeams}
           teams={teams}
         />
-      )}
-
+      )} */}
       {/* Teams List */}
       {loading ? (
         <Box textAlign="center" py={10}>
           <Spinner size="xl" />
           <Text mt={4}>Loading teams...</Text>
         </Box>
-      ) : teams.length === 0 ? (
+      ) : teamsWithPlayers.length === 0 ? (
         <Alert.Root status="info">
           <Alert.Indicator />
           <Alert.Title>No teams found</Alert.Title>
@@ -206,11 +180,11 @@ function TeamsPage() {
                 </Alert.Description>
               </Alert.Root>
             ) : (
-              paginatedTeams.map((team) => (
+              paginatedTeams.map((teamWithPlayers) => (
                 <TeamCard
-                  key={team.id}
-                  team={team}
-                  onClick={() => handleTeamClick(team)}
+                  key={teamWithPlayers.team.id}
+                  teamWithPlayers={teamWithPlayers}
+                  onClick={() => handleTeamClick(teamWithPlayers)}
                 />
               ))
             )}

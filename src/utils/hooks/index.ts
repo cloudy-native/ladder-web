@@ -1,4 +1,5 @@
-export * from './useLadders';
 export * from './useFilter';
-export * from './useTeams';
+export * from './useLadders';
 export * from './useMatches';
+export * from './usePagination';
+export * from './useTeams';

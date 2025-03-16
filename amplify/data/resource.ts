@@ -36,7 +36,7 @@ const schema = a
     /* A team can only be on one ladder and has exactly 2 player slots. */
     Team: a.model({
       name: a.string().required(),
-      ladderId: a.id().required(),
+      ladderId: a.id(),
       ladder: a.belongsTo("Ladder", "ladderId"),
       player1Id: a.id(),
       player1: a.belongsTo("Player", "player1Id"),
@@ -73,6 +73,7 @@ const schema = a
     }),
   })
   .authorization((allow) => [allow.guest(), allow.authenticated()]);
+  
 export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({

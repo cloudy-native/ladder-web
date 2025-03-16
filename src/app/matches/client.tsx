@@ -17,7 +17,7 @@ import {
 } from "@chakra-ui/react";
 import React, { useCallback, useState } from "react";
 import { IoAddCircle, IoRefresh, IoTrophy } from "react-icons/io5";
-import { Pagination, SearchInput } from "../../components/shared";
+import { Pagination, SearchInput } from "@/components/shared";
 import {
   DialogBody,
   DialogContent,
@@ -26,16 +26,16 @@ import {
   DialogRoot,
   DialogTitle,
   DialogTrigger,
-} from "../../components/ui/dialog";
-import { Field } from "../../components/ui/field";
+} from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import {
-  MatchWithDetails,
+  MatchWithLadderAndTeams,
   useFilter,
   useMatchCreate,
   useMatchList,
   usePagination,
-  useTeamsForMatch,
-} from "../../utils/hooks";
+  useTeamsForLadder,
+} from "@/utils/hooks";
 import { PAGE_SIZE } from "@/utils/constants";
 
 export function ClientOnly() {
@@ -62,16 +62,21 @@ function MatchesPage() {
 
   // Filter hook
   const matchFilter = useCallback(
-    (match: MatchWithDetails, searchText: string) => {
+    (match: MatchWithLadderAndTeams, searchText: string) => {
       // Check team names
-      if (match.team1Details?.name?.toLowerCase().includes(searchText))
+      if (match.team1?.name.toLowerCase().includes(searchText.toLowerCase())) {
         return true;
-      if (match.team2Details?.name?.toLowerCase().includes(searchText))
+      }
+      if (match.team2?.name.toLowerCase().includes(searchText.toLowerCase())) {
         return true;
+      }
 
       // Check ladder name
-      if (match.ladderDetails?.name?.toLowerCase().includes(searchText))
+      if (
+        match.ladder?.name?.toLowerCase().includes(searchText.toLowerCase())
+      ) {
         return true;
+      }
 
       return false;
     },
@@ -108,8 +113,8 @@ function MatchesPage() {
   }, [createMatchDialog.open]);
 
   // Team options for selected ladder
-  const { teams: teamsForLadder, loading: loadingTeams } =
-    useTeamsForMatch(selectedLadderId);
+  const { teamsWithPlayers, loading: loadingTeams } =
+    useTeamsForLadder(selectedLadderId);
 
   if (loadingTeams) return <Text fontSize="sm">Loading teams...</Text>;
   if (loadingMatches) return <Text fontSize="sm">Loading matches...</Text>;
@@ -192,14 +197,14 @@ function MatchesPage() {
                     </>
                   )}
 
-                  {!selectedLadderId && teamsForLadder.length === 0 && (
+                  {!selectedLadderId && teamsWithPlayers.length === 0 && (
                     <Alert.Root status="info">
                       <Alert.Indicator />
                       <Alert.Title>Select a ladder first</Alert.Title>
                     </Alert.Root>
                   )}
 
-                  {selectedLadderId && teamsForLadder.length < 2 && (
+                  {selectedLadderId && teamsWithPlayers.length < 2 && (
                     <Alert.Root status="warning">
                       <Alert.Indicator />
                       <Alert.Title>Not enough teams</Alert.Title>
@@ -286,34 +291,37 @@ function MatchesPage() {
                 </Table.Header>
                 <Table.Body>
                   {paginatedMatches.map((match) => (
-                    <Table.Row key={match.id}>
+                    <Table.Row key={match.match.id}>
                       <Table.Cell>
-                        {match.ladderDetails?.name || "Unknown Ladder"}
+                        {match.ladder?.name || "Unknown Ladder"}
                       </Table.Cell>
                       <Table.Cell
                         fontWeight={
-                          match.winnerId === match.team1Id ? "bold" : "normal"
+                          match.winner?.id === match.team1?.id
+                            ? "bold"
+                            : "normal"
                         }
                       >
-                        {match.winnerId === match.team1Id && (
+                        {match.winner?.id === match.team1?.id && (
                           <Icon as={IoTrophy} color="yellow.500" mr={2} />
                         )}
-                        {match.team1Details?.name || "Unknown Team"}
+                        {match.team1?.name || "Unknown Team"}
                       </Table.Cell>
                       <Table.Cell
                         fontWeight={
-                          match.winnerId === match.team2Id ? "bold" : "normal"
+                          match.winner?.id === match.team2?.id
+                            ? "bold"
+                            : "normal"
                         }
                       >
-                        {match.winnerId === match.team2Id && (
+                        {match.winner?.id === match.team2?.id && (
                           <Icon as={IoTrophy} color="yellow.500" mr={2} />
                         )}
-                        {match.team2Details?.name || "Unknown Team"}
+                        {match.team2?.name || "Unknown Team"}
                       </Table.Cell>
                       <Table.Cell>
-                        {match.playedOn}
-                        {match.playedOn
-                          ? formatFriendlyDate(match.playedOn)
+                        {match.match.playedOn
+                          ? formatFriendlyDate(match.match.playedOn)
                           : "Not played"}
                       </Table.Cell>
                     </Table.Row>

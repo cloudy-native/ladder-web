@@ -1,6 +1,6 @@
+import { isPromise } from "@/utils";
 import { Table, Text } from "@chakra-ui/react";
 import { useCallback, useEffect, useState } from "react";
-import { isPromise } from "../../utils/amplify-helpers";
 
 /**
  * Generic component to handle fetching and displaying relation data
@@ -43,10 +43,10 @@ export function RelationCell<T>({
       try {
         const result = stableFetchRelation();
 
-        // TODO: errors is GraphQLFormattedError
+        // TODO: errors is of type GraphQLFormattedError
         //
         // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
-        if (isPromise<{ data?: T | null; errors?: any[] }>(result)) {
+        if (isPromise(result)) {
           const response = await result;
           if (!isMounted) return;
 
@@ -92,7 +92,7 @@ export function RelationCell<T>({
       try {
         const rendered = renderData(data);
 
-        if (isPromise<React.ReactNode>(rendered)) {
+        if (isPromise(rendered)) {
           const result = await rendered;
           if (isMounted) {
             setRenderedData(result);
@@ -164,7 +164,7 @@ export function RelationData<T>({
         // TODO: errors is of type GraphQLFormattedError, but that's not easy to import
         //
         // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
-        if (isPromise<{ data?: T | null; errors?: any[] }>(result)) {
+        if (isPromise(result)) {
           const response = await result;
           if (!isMounted) return;
 
@@ -210,7 +210,7 @@ export function RelationData<T>({
       try {
         const rendered = renderData(data);
 
-        if (isPromise<React.ReactNode>(rendered)) {
+        if (isPromise(rendered)) {
           const result = await rendered;
           if (isMounted) {
             setRenderedData(result);

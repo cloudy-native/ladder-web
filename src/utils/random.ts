@@ -1,6 +1,5 @@
 import { faker } from "@faker-js/faker";
 import * as changeCase from "change-case";
-import { Player } from "./amplify-helpers";
 
 export function randomIndex<T>(array: T[]): number {
   if (array.length === 0) {
@@ -52,6 +51,3 @@ export function randomRecentDate(days: number) {
   return faker.date.recent({ days });
 }
 
-export function nameFor(player: Player) {
-  return `${player.givenName} ${player.familyName}`;
-}

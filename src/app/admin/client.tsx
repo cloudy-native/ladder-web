@@ -1,6 +1,25 @@
 "use client";
 
-import { formatFriendlyDate, formatFullDate } from "@/utils/dates";
+import { EntityCard, IdCell } from "@/components/admin";
+import {
+  Ladder,
+  Match,
+  Player,
+  Team,
+  ladderClient,
+  playerClient,
+  teamClient
+} from "@/utils/amplify-helpers";
+import {
+  deleteAllLadders,
+  deleteAllMatches,
+  deleteAllPlayers,
+  deleteAllTeams,
+} from "@/utils/crudl";
+import { getAllMatches, getAllPlayers, getAllTeams } from "@/utils/crudl/list";
+import { formatPlayerName } from "@/utils/data";
+import { addSampleEntities } from "@/utils/data-generators";
+import { formatFriendlyDate } from "@/utils/dates";
 import {
   Box,
   Button,
@@ -12,27 +31,12 @@ import {
   Spacer,
   Spinner,
   Table,
+  Tabs,
   Text,
   VStack,
-  Tabs,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { IoBeaker, IoRefresh, IoTrash, IoTrophy } from "react-icons/io5";
-import { EntityCard, IdCell } from "../../components/admin";
-import {
-  Ladder,
-  Match,
-  Player,
-  Team,
-  getClient,
-  ladderClient,
-  matchClient,
-  playerClient,
-  teamClient,
-} from "../../utils/amplify-helpers";
-import { deleteAllItems } from "../../utils/data-fetchers";
-import { addSampleEntities } from "../../utils/data-generators";
-import { nameFor } from "../../utils/random";
 
 export function ClientOnly() {
   return (
@@ -85,26 +89,7 @@ function AdminPage() {
   async function getPlayers() {
     try {
       setIsLoading((prev) => ({ ...prev, players: true }));
-      const { data, errors } = await playerClient().list();
-
-      if (errors) {
-        console.error("Player list errors:", errors);
-        console.warn("Continuing with available player data despite errors");
-      }
-
-      if (data && Array.isArray(data)) {
-        const validPlayers = data.filter(
-          (player) =>
-            player !== null &&
-            typeof player === "object" &&
-            player.id &&
-            player.givenName &&
-            player.familyName
-        );
-        setPlayers(validPlayers);
-      } else {
-        setPlayers([]);
-      }
+      setPlayers(await getAllPlayers());
     } catch (error) {
       console.error("Exception in getPlayers:", error);
       setPlayers([]);
@@ -117,22 +102,7 @@ function AdminPage() {
   async function getTeams() {
     try {
       setIsLoading((prev) => ({ ...prev, teams: true }));
-      const { data, errors } = await teamClient().list();
-
-      if (errors) {
-        console.error("Team list errors:", errors);
-        console.warn("Continuing with available team data despite errors");
-      }
-
-      if (data && Array.isArray(data)) {
-        const validTeams = data.filter(
-          (team) =>
-            team !== null && typeof team === "object" && team.id && team.name
-        );
-        setTeams(validTeams);
-      } else {
-        setTeams([]);
-      }
+      setTeams(await getAllTeams());
     } catch (error) {
       console.error("Exception in getTeams:", error);
       setTeams([]);
@@ -145,45 +115,7 @@ function AdminPage() {
   async function getMatches() {
     try {
       setIsLoading((prev) => ({ ...prev, matches: true }));
-      const { data, errors } = await matchClient().list({
-        selectionSet: [
-          "id",
-          "ladderId",
-          "team1Id",
-          "team2Id",
-          "winnerId",
-          "playedOn",
-        ],
-      });
-
-      if (errors) {
-        console.error("Match list errors:", errors);
-        console.warn("Continuing with available match data despite errors");
-      }
-
-      if (data && Array.isArray(data)) {
-        const validMatches = data.filter(
-          (match) =>
-            match !== null &&
-            typeof match === "object" &&
-            match.id &&
-            match.team1Id &&
-            match.team2Id
-        ) as Match[];
-        // Sort by creation date, newest first
-        validMatches.sort((a, b) => {
-          // Sort by date played, unplayed at bottom of list
-          // TODO: unplayed at top is better?
-          //
-          const dateA = a.playedOn ? new Date(a.playedOn).getTime() : 0;
-          const dateB = b.playedOn ? new Date(b.playedOn).getTime() : 0;
-
-          return dateB - dateA;
-        });
-        setMatches(validMatches);
-      } else {
-        setMatches([]);
-      }
+      setMatches(await getAllMatches());
     } catch (error) {
       console.error("Exception in getMatches:", error);
       setMatches([]);
@@ -194,7 +126,7 @@ function AdminPage() {
   }
 
   async function getAll() {
-    const results = await Promise.allSettled([
+    return await Promise.allSettled([
       getLadders().catch((err) => {
         console.error("Error fetching ladders:", err);
         setLadders([]);
@@ -212,13 +144,6 @@ function AdminPage() {
         setMatches([]);
       }),
     ]);
-
-    const successful = results.filter((r) => r.status === "fulfilled").length;
-    console.log(`Data loading complete: ${successful}/4 successful`);
-
-    if (successful < 4) {
-      console.warn("Some data fetches failed. UI may be incomplete.");
-    }
   }
 
   const refreshData = () => {
@@ -228,71 +153,6 @@ function AdminPage() {
   useEffect(() => {
     refreshData();
   }, []);
-
-  const models = getClient().models;
-
-  async function deleteAllItemsWithLoading<T extends { id: string }>({
-    items,
-    modelName,
-    entityType,
-    refreshFunction,
-  }: {
-    items: T[];
-    modelName: keyof typeof models;
-    entityType: keyof typeof isLoading;
-    refreshFunction: () => Promise<void>;
-  }) {
-    if (items.length === 0) {
-      console.log(`No ${modelName}s to delete`);
-      return;
-    }
-
-    setIsLoading((prev) => ({ ...prev, [entityType]: true }));
-
-    try {
-      console.log(`Deleting ${items.length} ${modelName}s...`);
-      await deleteAllItems({ items, modelName });
-      console.log(`Successfully deleted ${items.length} ${modelName}s`);
-    } catch (error) {
-      console.error(`Error deleting ${modelName}s:`, error);
-    } finally {
-      setIsLoading((prev) => ({ ...prev, [entityType]: false }));
-      // Refresh the data after deletion
-      await refreshFunction();
-    }
-  }
-
-  const deleteAllLadders = () =>
-    deleteAllItemsWithLoading({
-      items: ladders,
-      modelName: "Ladder",
-      entityType: "ladders",
-      refreshFunction: getLadders,
-    });
-
-  const deleteAllPlayers = () =>
-    deleteAllItemsWithLoading({
-      items: players,
-      modelName: "Player",
-      entityType: "players",
-      refreshFunction: getPlayers,
-    });
-
-  const deleteAllTeams = () =>
-    deleteAllItemsWithLoading({
-      items: teams,
-      modelName: "Team",
-      entityType: "teams",
-      refreshFunction: getTeams,
-    });
-
-  const deleteAllMatches = () =>
-    deleteAllItemsWithLoading({
-      items: matches,
-      modelName: "Match",
-      entityType: "matches",
-      refreshFunction: getMatches,
-    });
 
   async function deleteAll() {
     setIsLoading({
@@ -314,7 +174,7 @@ function AdminPage() {
       console.log("All entities successfully deleted");
 
       // Refresh data after deletion
-      await refreshData();
+      refreshData();
     } catch (error) {
       console.error("Error during bulk delete:", error);
     } finally {
@@ -459,7 +319,9 @@ function AdminPage() {
 
     return (
       <Table.Cell>
-        {players.length > 0 ? players.map((p) => nameFor(p)).join(", ") : "—"}
+        {players.length > 0
+          ? players.map((player) => formatPlayerName(player)).join(", ")
+          : "—"}
       </Table.Cell>
     );
   }
@@ -768,6 +630,7 @@ function AdminPage() {
 
   async function sampleData() {
     await addSampleEntities();
+
     refreshData();
   }
 
@@ -836,9 +699,7 @@ function AdminPage() {
               {players.map((player) => (
                 <Table.Row key={player.id}>
                   <IdCell id={player.id} />
-                  <Table.Cell>
-                    {player.givenName} {player.familyName}
-                  </Table.Cell>
+                  <Table.Cell>{formatPlayerName(player)}</Table.Cell>
                   <TeamsForPlayerTableCell
                     player={player}
                     playerType="player1Id"

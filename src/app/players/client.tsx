@@ -29,9 +29,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../components/ui/dialog";
-import { Field } from "../../components/ui/field";
-import { Player, playerClient, teamClient } from "../../utils/amplify-helpers";
+} from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { Player, playerClient, teamClient } from "@/utils";
+import { formatPlayerName } from "@/utils/data";
 
 export function ClientOnly() {
   return (
@@ -64,9 +65,8 @@ function PlayersPage() {
     if (!filterText.trim()) return players;
 
     return players.filter((player) => {
-      // Check player name
-      const fullName = `${player.givenName} ${player.familyName}`.toLowerCase();
-      if (fullName.includes(filterText.toLowerCase())) return true;
+      if (formatPlayerName(player).includes(filterText.toLowerCase()))
+        return true;
 
       // Check player email
       if (player.email.toLowerCase().includes(filterText.toLowerCase()))
