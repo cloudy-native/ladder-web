@@ -30,4 +30,5 @@
 - [ ] Create index.ts for components and check we import from directory instead
 - [ ] Fix all pages to import ClientOnly from common component
 - [ ] Move home page to same level as other pages and name files the same
+- [ ] Remove the basic crudl operations that have been migrated to entity-specific files
 - [ ] 
