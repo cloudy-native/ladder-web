@@ -4,8 +4,8 @@ import "@aws-amplify/ui-react/styles.css";
 import { ChakraProvider } from "@chakra-ui/react";
 import { Amplify } from "aws-amplify";
 import { useEffect } from "react";
-import config from "../../amplify_outputs.json";
-import { theme } from "../theme/theme";
+import config from "@/amplify_outputs.json";
+import { theme } from "@/theme/theme";
 import ClientLayout from "./client-layout";
 
 export default function RootLayout({

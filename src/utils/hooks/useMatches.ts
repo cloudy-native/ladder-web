@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import {
   Ladder,
   Match,
@@ -8,7 +7,8 @@ import {
   Team,
   teamClient,
 } from "@/utils/amplify-helpers";
-import { filterNotNull } from "../data";
+import { filterNotNull } from "@/utils/data";
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Represents a match with its associated ladder and teams.

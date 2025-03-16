@@ -1,5 +1,5 @@
+import { Player } from "@/utils/amplify-helpers";
 import { Avatar, Badge, Box, HStack, Text } from "@chakra-ui/react";
-import { Player } from "../../utils/amplify-helpers";
 
 interface PlayerDisplayProps {
   /**

@@ -10,7 +10,7 @@ import {
   Spacer,
   Text,
   useBreakpointValue,
-  useDisclosure
+  useDisclosure,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,8 +24,8 @@ import {
   IoTrophy,
 } from "react-icons/io5";
 // import { ReactComponent as Logo } from "../../../assets/react.svg";
+import { useColorModeValue } from "@/components/ui";
 import { Button } from "@aws-amplify/ui-react";
-import { useColorModeValue } from "../color-mode";
 
 interface NavItemProps {
   icon: React.ElementType;

@@ -3,41 +3,54 @@ import {
   matchClient,
   playerClient,
   teamClient,
-} from "../amplify-helpers";
-import { BATCH_SIZE } from "../constants";
+} from "@/utils/amplify-helpers"; // Import the Amplify clients
+import { BATCH_SIZE } from "@/utils/constants"; // Import the batch size constant
 
 /**
- * Delete a ladder by id
+ * Deletes a single ladder by its ID.
+ * @param id - The ID of the ladder to delete.
+ * @returns A promise that resolves to `true` if the ladder was deleted successfully, `false` otherwise.  Throws an error if there's a problem other than a simple failure to delete.
  */
-export async function deleteLadder(id: string):Promise<boolean> {
+export async function deleteLadder(id: string): Promise<boolean> {
   try {
     const { errors } = await ladderClient().delete({ id });
 
     if (errors) {
+      // Log the error for debugging purposes
       console.error("Error deleting ladder:", errors);
-      // TODO: is this right? or handle the error inline?
-      //
-      throw new Error("Failed to delete ladder");
+      //More informative error message
+      throw new Error(
+        `Failed to delete ladder with ID ${id}: ${errors
+          .map((e) => e.message)
+          .join(", ")}`
+      );
     }
 
     console.log("Ladder deleted successfully");
     return true;
   } catch (error) {
     console.error("Exception deleting ladder:", error);
+    // Re-throw the error to be handled by the calling function
     throw error;
   }
 }
 
 /**
- * Delete a team by id
+ * Deletes a single team by its ID.
+ * @param id - The ID of the team to delete.
+ * @returns A promise that resolves to `true` if the team was deleted successfully, `false` otherwise. Throws an error if there's a problem other than a simple failure to delete.
  */
-export async function deleteTeam(id: string):Promise<boolean> {
+export async function deleteTeam(id: string): Promise<boolean> {
   try {
     const { errors } = await teamClient().delete({ id });
 
     if (errors) {
       console.error("Error deleting team:", errors);
-      throw new Error("Failed to delete team");
+      throw new Error(
+        `Failed to delete team with ID ${id}: ${errors
+          .map((e) => e.message)
+          .join(", ")}`
+      );
     }
 
     console.log("Team deleted successfully");
@@ -49,22 +62,21 @@ export async function deleteTeam(id: string):Promise<boolean> {
 }
 
 /**
- * Deletes all ladders from the database.
- *
- * This function fetches all ladders and then deletes them in batches to avoid
- * overwhelming the API.
- *
- * @returns {Promise<boolean>} True if all ladders were deleted successfully, false otherwise.
- * @throws {Error} If there is an error fetching or deleting ladders.
+ * Deletes all ladders from the database in batches to avoid overwhelming the API.
+ * @returns A promise that resolves to `true` if all ladders were deleted successfully, `false` otherwise.
+ * @throws An error if there's a problem fetching or deleting ladders.  Individual ladder delete failures are logged but don't halt the process.
  */
 export async function deleteAllLadders(): Promise<boolean> {
   try {
-    // Fetch all ladders
     const { data: ladders, errors: listErrors } = await ladderClient().list();
 
     if (listErrors) {
       console.error("Error fetching ladders:", listErrors);
-      throw new Error("Failed to fetch ladders");
+      throw new Error(
+        `Failed to fetch ladders: ${listErrors
+          .map((e) => e.message)
+          .join(", ")}`
+      );
     }
 
     if (!ladders || ladders.length === 0) {
@@ -74,10 +86,8 @@ export async function deleteAllLadders(): Promise<boolean> {
 
     console.log(`Deleting ${ladders.length} ladders...`);
 
-    // Delete ladders in batches
     for (let i = 0; i < ladders.length; i += BATCH_SIZE) {
       const batch = ladders.slice(i, i + BATCH_SIZE);
-
       console.log(
         `Deleting ${batch.length} ladders (batch ${
           Math.floor(i / BATCH_SIZE) + 1
@@ -89,16 +99,17 @@ export async function deleteAllLadders(): Promise<boolean> {
           const { errors: deleteErrors } = await ladderClient().delete({
             id: ladder.id,
           });
-
           if (deleteErrors) {
             console.error(`Error deleting ladder ${ladder.id}:`, deleteErrors);
-
-            throw new Error(`Failed to delete ladder ${ladder.id}`);
+            //More informative error message
+            console.error(
+              `Failed to delete ladder ${ladder.id}: ${deleteErrors
+                .map((e) => e.message)
+                .join(", ")}`
+            );
           }
         } catch (err) {
           console.error(`Error deleting ladder ${ladder.id}:`, err);
-          
-          // Continue with other deletions rather than throwing
         }
       });
 
@@ -114,22 +125,22 @@ export async function deleteAllLadders(): Promise<boolean> {
 }
 
 /**
- * Deletes all players from the database.
- *
- * This function fetches all players and then deletes them in batches to avoid
- * overwhelming the API.
- *
- * @returns {Promise<boolean>} True if all players were deleted successfully, false otherwise.
- * @throws {Error} If there is an error fetching or deleting players.
+ * Deletes all players from the database in batches.
+ * @returns A promise that resolves to `true` if all players were deleted successfully, `false` otherwise.
+ * @throws An error if there's a problem fetching or deleting players. Individual player delete failures are logged but don't halt the process.
  */
 export async function deleteAllPlayers(): Promise<boolean> {
+  // ... (Identical structure to deleteAllLadders, just replace ladderClient with playerClient) ...
   try {
-    // Fetch all players
     const { data: players, errors: listErrors } = await playerClient().list();
 
     if (listErrors) {
       console.error("Error fetching players:", listErrors);
-      throw new Error("Failed to fetch players");
+      throw new Error(
+        `Failed to fetch players: ${listErrors
+          .map((e) => e.message)
+          .join(", ")}`
+      );
     }
 
     if (!players || players.length === 0) {
@@ -139,7 +150,6 @@ export async function deleteAllPlayers(): Promise<boolean> {
 
     console.log(`Deleting ${players.length} players...`);
 
-    // Delete players in batches
     for (let i = 0; i < players.length; i += BATCH_SIZE) {
       const batch = players.slice(i, i + BATCH_SIZE);
       console.log(
@@ -153,14 +163,16 @@ export async function deleteAllPlayers(): Promise<boolean> {
           const { errors: deleteErrors } = await playerClient().delete({
             id: player.id,
           });
-
           if (deleteErrors) {
             console.error(`Error deleting player ${player.id}:`, deleteErrors);
-            throw new Error(`Failed to delete player ${player.id}`);
+            console.error(
+              `Failed to delete player ${player.id}: ${deleteErrors
+                .map((e) => e.message)
+                .join(", ")}`
+            );
           }
         } catch (err) {
           console.error(`Error deleting player ${player.id}:`, err);
-          // Continue with other deletions rather than throwing
         }
       });
 
@@ -176,22 +188,20 @@ export async function deleteAllPlayers(): Promise<boolean> {
 }
 
 /**
- * Deletes all teams from the database.
- *
- * This function fetches all teams and then deletes them in batches to avoid
- * overwhelming the API.
- *
- * @returns {Promise<boolean>} True if all teams were deleted successfully, false otherwise.
- * @throws {Error} If there is an error fetching or deleting teams.
+ * Deletes all teams from the database in batches.
+ * @returns A promise that resolves to `true` if all teams were deleted successfully, `false` otherwise.
+ * @throws An error if there's a problem fetching or deleting teams. Individual team delete failures are logged but don't halt the process.
  */
 export async function deleteAllTeams(): Promise<boolean> {
+  // ... (Identical structure to deleteAllLadders, just replace ladderClient with teamClient) ...
   try {
-    // Fetch all teams
     const { data: teams, errors: listErrors } = await teamClient().list();
 
     if (listErrors) {
       console.error("Error fetching teams:", listErrors);
-      throw new Error("Failed to fetch teams");
+      throw new Error(
+        `Failed to fetch teams: ${listErrors.map((e) => e.message).join(", ")}`
+      );
     }
 
     if (!teams || teams.length === 0) {
@@ -201,7 +211,6 @@ export async function deleteAllTeams(): Promise<boolean> {
 
     console.log(`Deleting ${teams.length} teams...`);
 
-    // Delete teams in batches
     for (let i = 0; i < teams.length; i += BATCH_SIZE) {
       const batch = teams.slice(i, i + BATCH_SIZE);
       console.log(
@@ -215,14 +224,16 @@ export async function deleteAllTeams(): Promise<boolean> {
           const { errors: deleteErrors } = await teamClient().delete({
             id: team.id,
           });
-
           if (deleteErrors) {
             console.error(`Error deleting team ${team.id}:`, deleteErrors);
-            throw new Error(`Failed to delete team ${team.id}`);
+            console.error(
+              `Failed to delete team ${team.id}: ${deleteErrors
+                .map((e) => e.message)
+                .join(", ")}`
+            );
           }
         } catch (err) {
           console.error(`Error deleting team ${team.id}:`, err);
-          // Continue with other deletions rather than throwing
         }
       });
 
@@ -238,22 +249,22 @@ export async function deleteAllTeams(): Promise<boolean> {
 }
 
 /**
- * Deletes all matches from the database.
- *
- * This function fetches all matches and then deletes them in batches to avoid
- * overwhelming the API.
- *
- * @returns {Promise<boolean>} True if all matches were deleted successfully, false otherwise.
- * @throws {Error} If there is an error fetching or deleting matches.
+ * Deletes all matches from the database in batches.
+ * @returns A promise that resolves to `true` if all matches were deleted successfully, `false` otherwise.
+ * @throws An error if there's a problem fetching or deleting matches. Individual match delete failures are logged but don't halt the process.
  */
 export async function deleteAllMatches(): Promise<boolean> {
+  // ... (Identical structure to deleteAllLadders, just replace ladderClient with matchClient) ...
   try {
-    // Fetch all matches
     const { data: matches, errors: listErrors } = await matchClient().list();
 
     if (listErrors) {
       console.error("Error fetching matches:", listErrors);
-      throw new Error("Failed to fetch matches");
+      throw new Error(
+        `Failed to fetch matches: ${listErrors
+          .map((e) => e.message)
+          .join(", ")}`
+      );
     }
 
     if (!matches || matches.length === 0) {
@@ -263,7 +274,6 @@ export async function deleteAllMatches(): Promise<boolean> {
 
     console.log(`Deleting ${matches.length} matches...`);
 
-    // Delete matches in batches
     for (let i = 0; i < matches.length; i += BATCH_SIZE) {
       const batch = matches.slice(i, i + BATCH_SIZE);
       console.log(
@@ -277,14 +287,16 @@ export async function deleteAllMatches(): Promise<boolean> {
           const { errors: deleteErrors } = await matchClient().delete({
             id: match.id,
           });
-
           if (deleteErrors) {
             console.error(`Error deleting match ${match.id}:`, deleteErrors);
-            throw new Error(`Failed to delete match ${match.id}`);
+            console.error(
+              `Failed to delete match ${match.id}: ${deleteErrors
+                .map((e) => e.message)
+                .join(", ")}`
+            );
           }
         } catch (err) {
           console.error(`Error deleting match ${match.id}:`, err);
-          // Continue with other deletions rather than throwing
         }
       });
 
@@ -299,6 +311,10 @@ export async function deleteAllMatches(): Promise<boolean> {
   }
 }
 
+/**
+ * Deletes all data (matches, teams, ladders, players) from the database.  Deletes in the order: matches, teams, ladders, players.
+ * @throws An error if any of the delete operations fail.
+ */
 export async function deleteAll() {
   try {
     await deleteAllMatches();

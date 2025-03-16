@@ -1,6 +1,6 @@
+import { Tooltip } from "@/components/ui";
 import { Flex, Icon, Table } from "@chakra-ui/react";
 import { IoKey } from "react-icons/io5";
-import { Tooltip } from "../ui/tooltip"
 
 interface IdCellProps {
   id: string;

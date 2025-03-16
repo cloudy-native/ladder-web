@@ -1,5 +1,6 @@
 "use client";
 
+import { useColorModeValue } from "@/components/ui";
 import {
   Box,
   Button,
@@ -14,7 +15,6 @@ import {
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { IoLogoGithub, IoLogoTwitter, IoMailOutline } from "react-icons/io5";
-import { useColorModeValue } from "../../ui/color-mode";
 
 interface SocialButtonProps {
   children: React.ReactNode;
@@ -76,7 +76,7 @@ export const Footer = () => {
       mt="auto"
     >
       <Container maxW="container.xl" pt={10} pb={6}>
-        <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }}  mb={8}>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} mb={8}>
           <Stack align="flex-start">
             <ListHeader>Product</ListHeader>
             <Link as={NextLink} href="/about">
@@ -111,7 +111,7 @@ export const Footer = () => {
 
           <Stack align="flex-start">
             <ListHeader>Stay Connected</ListHeader>
-            <HStack >
+            <HStack>
               <SocialButton label="Twitter" href="#">
                 <Icon as={IoLogoTwitter} boxSize={4} />
               </SocialButton>

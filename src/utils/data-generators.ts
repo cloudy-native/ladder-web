@@ -1,17 +1,7 @@
 "use client";
 
 import {
-  Ladder,
-  ladderClient,
-  Match,
-  matchClient,
-  Player,
-  playerClient,
-  Team,
-  teamClient,
-} from "./amplify-helpers";
-import { BATCH_SIZE } from "./constants";
-import {
+  BATCH_SIZE,
   randomAvatar,
   randomElement,
   randomEmail,
@@ -22,10 +12,20 @@ import {
   randomRating,
   randomRecentDate,
   randomTeamName,
-} from "./random";
+} from "@/utils";
+import {
+  Ladder,
+  ladderClient,
+  Match,
+  matchClient,
+  Player,
+  playerClient,
+  Team,
+  teamClient,
+} from "@/utils/amplify-helpers";
 
 /**
- * Options for data generation
+ * Configuration options for data generation.  All values are optional and will default to reasonable values if not provided.
  */
 interface GeneratorConfig {
   numPlayers?: number; // Number of players to generate
@@ -34,11 +34,11 @@ interface GeneratorConfig {
   singlePlayerTeamRate?: number; // Percentage of teams with only one player (0.0 to 1.0)
   numMatches?: number; // Number of matches to generate
   matchWinRate?: number; // Percentage of matches with a recorded winner (0.0 to 1.0)
-  deleteExisting?: boolean; // Whether to delete existing data before generating new
+  deleteExisting?: boolean; // Whether to delete existing data before generating new data
 }
 
 /**
- * Default configuration values
+ * Default configuration values for data generation.  These values will be used if not overridden in the `addSampleEntities` function.
  */
 const DEFAULT_CONFIG: GeneratorConfig = {
   numPlayers: 20,
@@ -51,87 +51,18 @@ const DEFAULT_CONFIG: GeneratorConfig = {
 };
 
 /**
- * Delete all existing data from the database
+ * Clears existing data from the database. Deletes matches, teams, ladders, and players in that order to handle foreign key constraints. Uses batch processing for efficiency.
+ * @throws An error if any of the delete operations fail.  Provides detailed error information.
  */
 async function clearExistingData() {
   console.log("Clearing existing data...");
 
   try {
-    // First delete matches to avoid foreign key constraints
-    const { data: matches } = await matchClient().list();
-
-    if (matches && matches.length > 0) {
-      console.log(`Deleting ${matches.length} matches...`);
-
-      for (let i = 0; i < matches.length; i += BATCH_SIZE) {
-        const batch = matches.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map((match) => matchClient().delete({ id: match.id }))
-        );
-        console.log(
-          `Deleted ${Math.min(i + BATCH_SIZE, matches.length)}/${
-            matches.length
-          } matches`
-        );
-      }
-    }
-
-    // Delete teams
-    const { data: teams } = await teamClient().list();
-
-    if (teams && teams.length > 0) {
-      console.log(`Deleting ${teams.length} teams...`);
-
-      for (let i = 0; i < teams.length; i += BATCH_SIZE) {
-        const batch = teams.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map((team) => teamClient().delete({ id: team.id }))
-        );
-        console.log(
-          `Deleted ${Math.min(i + BATCH_SIZE, teams.length)}/${
-            teams.length
-          } teams`
-        );
-      }
-    }
-
-    // Delete ladders
-    const { data: ladders } = await ladderClient().list();
-
-    if (ladders && ladders.length > 0) {
-      console.log(`Deleting ${ladders.length} ladders...`);
-
-      for (let i = 0; i < ladders.length; i += BATCH_SIZE) {
-        const batch = ladders.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map((ladder) => ladderClient().delete({ id: ladder.id }))
-        );
-        console.log(
-          `Deleted ${Math.min(i + BATCH_SIZE, ladders.length)}/${
-            ladders.length
-          } ladders`
-        );
-      }
-    }
-
-    // Delete players
-    const { data: players } = await playerClient().list();
-
-    if (players && players.length > 0) {
-      console.log(`Deleting ${players.length} players...`);
-
-      for (let i = 0; i < players.length; i += BATCH_SIZE) {
-        const batch = players.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map((player) => playerClient().delete({ id: player.id }))
-        );
-        console.log(
-          `Deleted ${Math.min(i + BATCH_SIZE, players.length)}/${
-            players.length
-          } players`
-        );
-      }
-    }
+    // Delete data in this order to avoid foreign key constraint issues
+    await deleteData("matches", matchClient);
+    await deleteData("teams", teamClient);
+    await deleteData("ladders", ladderClient);
+    await deleteData("players", playerClient);
 
     console.log("Database cleared successfully");
   } catch (error) {
@@ -141,7 +72,42 @@ async function clearExistingData() {
 }
 
 /**
- * Generate random players with realistic data
+ * Helper function to delete data from a specific model in batches.
+ * @param modelName - The name of the model (used for logging).
+ * @param client - The Amplify client for the model.
+ * @throws An error if there's a problem fetching or deleting data.
+ */
+async function deleteData(modelName: string, client: any) {
+  const { data: dataToDelete, errors: listErrors } = await client().list();
+
+  if (listErrors) {
+    console.error(`Error fetching ${modelName}:`, listErrors);
+    throw new Error(
+      `Failed to fetch ${modelName}: ${listErrors
+        .map((e) => e.message)
+        .join(", ")}`
+    );
+  }
+
+  if (dataToDelete && dataToDelete.length > 0) {
+    console.log(`Deleting ${dataToDelete.length} ${modelName}...`);
+
+    for (let i = 0; i < dataToDelete.length; i += BATCH_SIZE) {
+      const batch = dataToDelete.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map((item) => client().delete({ id: item.id })));
+      console.log(
+        `Deleted ${Math.min(i + BATCH_SIZE, dataToDelete.length)}/${
+          dataToDelete.length
+        } ${modelName}`
+      );
+    }
+  }
+}
+
+/**
+ * Generates random players with realistic data. Uses batch processing for efficiency.
+ * @param count - The number of players to generate.
+ * @returns An array of generated Player objects.
  */
 async function generatePlayers(count: number): Promise<Player[]> {
   console.log(`Generating ${count} players...`);
@@ -177,7 +143,9 @@ async function generatePlayers(count: number): Promise<Player[]> {
 }
 
 /**
- * Generate ladders with realistic data
+ * Generates random ladders with realistic data. Uses batch processing for efficiency.
+ * @param count - The number of ladders to generate.
+ * @returns An array of generated Ladder objects.
  */
 async function generateLadders(count: number): Promise<Ladder[]> {
   console.log(`Generating ${count} ladders...`);
@@ -211,7 +179,12 @@ async function generateLadders(count: number): Promise<Ladder[]> {
 }
 
 /**
- * Generate teams and assign to ladders
+ * Generates random teams and assigns them to ladders and players. Handles single-player teams based on the provided rate. Uses batch processing for efficiency.
+ * @param count - The number of teams to generate.
+ * @param ladders - An array of available Ladder objects.
+ * @param players - An array of available Player objects.
+ * @param singlePlayerRate - The probability of a team having only one player (0.0 to 1.0).
+ * @returns An array of generated Team objects.
  */
 async function generateTeams(
   count: number,
@@ -220,34 +193,21 @@ async function generateTeams(
   singlePlayerRate: number
 ): Promise<Team[]> {
   console.log(`Generating ${count} teams...`);
-  console.log("ladders", ladders);
-  console.log("players", players);
   const teams: Team[] = [];
 
-  // Make a copy of players that we can shuffle and assign
+  // Create a copy of players to avoid modifying the original array
   const availablePlayers = [...players];
 
-  // Shuffle the available players
-  for (let i = availablePlayers.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [availablePlayers[i], availablePlayers[j]] = [
-      availablePlayers[j],
-      availablePlayers[i],
-    ];
-  }
+  // Shuffle the players array to randomize player assignments
+  shuffleArray(availablePlayers);
 
   try {
     // Prepare team creation parameters
-    const teamParams = Array.from({ length: count }, () => {
-      const ladderId = randomElement(ladders).id;
-      const rating = randomRating(1000, 1600);
-
-      return {
-        name: randomTeamName(),
-        rating,
-        ladderId,
-      };
-    });
+    const teamParams = Array.from({ length: count }, () => ({
+      name: randomTeamName(),
+      rating: randomRating(1000, 1600),
+      ladderId: randomElement(ladders).id,
+    }));
 
     // Create teams in batches
     const batches = Math.ceil(count / BATCH_SIZE);
@@ -273,50 +233,45 @@ async function generateTeams(
         .map((result) => result.data)
         .filter(Boolean) as Team[];
 
-      // Now assign players to teams
+      // Assign players to teams
       const teamsWithPlayersResults = await Promise.all(
-        createdTeams.map((team) => {
-          // Should this team have one or two players?
+        createdTeams.map(async (team) => {
+          // Determine if this team should have one or two players
           const isSinglePlayerTeam = Math.random() < singlePlayerRate;
 
-          // Check if we have enough players left
-          if (availablePlayers.length === 0) {
-            console.log(`Created team without players (ran out): ${team.name}`);
-            return team;
-          }
-
           // Assign player 1
-          const player1 = availablePlayers.pop()!;
+          const player1 = availablePlayers.pop();
+          if (!player1) {
+            console.warn(`Not enough players to assign to team ${team.name}`);
+            return team; // Return the team without players if not enough players are available
+          }
 
           // Assign player 2 if needed and available
-          let player2 = null;
-          if (!isSinglePlayerTeam && availablePlayers.length > 0) {
-            player2 = availablePlayers.pop()!;
-          }
+          const player2 =
+            !isSinglePlayerTeam && availablePlayers.length > 0
+              ? availablePlayers.pop()
+              : null;
 
-          // Update team with players
-          return teamClient()
-            .update({
-              id: team.id,
-              player1Id: player1.id,
-              player2Id: player2?.id,
-            })
-            .then((result) => {
-              if (result.errors) {
-                console.error(
-                  `Error updating team ${team.name} with players:`,
-                  result.errors
-                );
-                return team; // Return original team if update fails
-              }
-              return result.data;
-            });
+          // Update team with player IDs
+          const updatedTeamResult = await teamClient().update({
+            id: team.id,
+            player1Id: player1.id,
+            player2Id: player2?.id,
+          });
+
+          if (updatedTeamResult.errors) {
+            console.error(
+              `Error updating team ${team.name} with players:`,
+              updatedTeamResult.errors
+            );
+            return team; // Return original team if update fails
+          }
+          return updatedTeamResult.data;
         })
       );
 
       // Add the updated teams to the result array
-      const validTeams = teamsWithPlayersResults.filter(Boolean) as Team[];
-      teams.push(...validTeams);
+      teams.push(...(teamsWithPlayersResults.filter(Boolean) as Team[]));
 
       console.log(`Created ${teams.length}/${count} teams`);
     }
@@ -325,12 +280,16 @@ async function generateTeams(
     return teams;
   } catch (error) {
     console.error("Error generating teams:", error);
-    return teams; // Return any teams we managed to create
+    return teams; // Return any teams that were successfully created
   }
 }
 
 /**
- * Generate matches between teams in ladders
+ * Generates random matches between teams in ladders.  Handles win probabilities based on team ratings. Uses batch processing for efficiency.
+ * @param count - The number of matches to generate.
+ * @param teams - An array of available Team objects.
+ * @param winRate - The probability of a match having a recorded winner (0.0 to 1.0).
+ * @returns An array of generated Match objects.
  */
 async function generateMatches(
   count: number,
@@ -340,19 +299,17 @@ async function generateMatches(
   console.log(`Generating ${count} matches...`);
   const matches: Match[] = [];
 
-  // Group teams by ladder
+  // Group teams by ladder for efficient match generation
   const teamsByLadder: Record<string, Team[]> = {};
   for (const team of teams) {
     if (team.ladderId) {
-      if (!teamsByLadder[team.ladderId]) {
-        teamsByLadder[team.ladderId] = [];
-      }
+      teamsByLadder[team.ladderId] = teamsByLadder[team.ladderId] || [];
       teamsByLadder[team.ladderId].push(team);
     }
   }
 
   try {
-    // For each ladder that has at least 2 teams
+    // Generate matches for each ladder with at least two teams
     for (const ladderId in teamsByLadder) {
       const ladderTeams = teamsByLadder[ladderId];
 
@@ -361,58 +318,44 @@ async function generateMatches(
         continue;
       }
 
-      // Determine how many matches to generate for this ladder
+      // Determine the number of matches to generate for this ladder
       const ladderMatchCount = Math.min(
         Math.floor(count * (ladderTeams.length / teams.length)),
         Math.floor(ladderTeams.length * 3) // ~3 matches per team on average
       );
 
-      // Generate all match parameters for this ladder
+      // Generate match parameters for this ladder
       const matchParams = Array.from({ length: ladderMatchCount }, () => {
-        // Pick two random teams from this ladder
-        const team1Index = Math.floor(Math.random() * ladderTeams.length);
-        let team2Index;
+        // Select two different teams randomly
+        let team1, team2;
         do {
-          team2Index = Math.floor(Math.random() * ladderTeams.length);
-        } while (team2Index === team1Index);
+          team1 = randomElement(ladderTeams);
+          team2 = randomElement(ladderTeams);
+        } while (team1 === team2);
 
-        const team1 = ladderTeams[team1Index];
-        const team2 = ladderTeams[team2Index];
-
-        // Determine if this match has a winner
+        // Determine if there's a winner
         const hasWinner = Math.random() < winRate;
 
-        // If there's a winner, determine who won based on rating
+        // Determine the winner based on team ratings (simplified Elo-like calculation)
         let winnerId = undefined;
         if (hasWinner) {
-          // TODO: move all the rating stuff and ELO to separate file.
-          //
           const team1Rating = team1.rating || 1200;
           const team2Rating = team2.rating || 1200;
-
-          // Calculate win probability using Elo formula
           const ratingDiff = team1Rating - team2Rating;
-          // TODO: This might actually be ELO .. need to check
           const team1WinProbability = 1 / (1 + Math.pow(10, -ratingDiff / 400));
-
-          // Determine winner based on probability
           winnerId = Math.random() < team1WinProbability ? team1.id : team2.id;
         }
 
         // Create match date within the last 30 days
         const playedOn = randomRecentDate(30).toISOString();
 
-        const match = {
+        return {
           ladderId,
           team1Id: team1.id,
           team2Id: team2.id,
           winnerId,
           playedOn,
         };
-
-        console.log("match", match);
-
-        return match;
       });
 
       // Create matches in batches
@@ -434,15 +377,15 @@ async function generateMatches(
           batchParams.map((params) => matchClient().create(params))
         );
 
-        // Process created matches
-        const createdMatches = createdMatchesResults
-          .map((result) => result.data)
-          .filter(Boolean) as Match[];
-
-        matches.push(...createdMatches);
+        // Add successfully created matches to the main array
+        matches.push(
+          ...(createdMatchesResults
+            .map((result) => result.data)
+            .filter(Boolean) as Match[])
+        );
 
         console.log(
-          `Created ${matches.length} matches so far (${createdMatches.length} in this batch)`
+          `Created ${matches.length} matches so far (${createdMatchesResults.length} in this batch)`
         );
       }
     }
@@ -451,15 +394,29 @@ async function generateMatches(
     return matches;
   } catch (error) {
     console.error("Error generating matches:", error);
-    return matches; // Return any matches we managed to create
+    return matches; // Return any matches that were successfully created
   }
 }
 
 /**
- * Main function to add sample entities to the database
+ * Shuffles an array in place using the Fisher-Yates algorithm.
+ * @param array - The array to shuffle.
+ */
+function shuffleArray<T>(array: T[]): void {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+/**
+ * Main function to generate and add sample entities to the database.  Handles configuration, data generation, and error handling.
+ * @param config - Optional configuration object to override default values.
+ * @returns An object containing the generated players, ladders, teams, and matches.
+ * @throws An error if any part of the data generation process fails.
  */
 export async function addSampleEntities(config: Partial<GeneratorConfig> = {}) {
-  // Merge provided config with defaults
+  // Merge user-provided config with default config
   const finalConfig: GeneratorConfig = { ...DEFAULT_CONFIG, ...config };
 
   console.log("Sample data configuration:", finalConfig);
@@ -470,7 +427,7 @@ export async function addSampleEntities(config: Partial<GeneratorConfig> = {}) {
       await clearExistingData();
     }
 
-    // Generate data in order (players → ladders → teams → matches)
+    // Generate data in a specific order to handle dependencies
     const players = await generatePlayers(finalConfig.numPlayers!);
     const ladders = await generateLadders(finalConfig.numLadders!);
     const teams = await generateTeams(
@@ -479,31 +436,24 @@ export async function addSampleEntities(config: Partial<GeneratorConfig> = {}) {
       players,
       finalConfig.singlePlayerTeamRate!
     );
-
-    // Generate matches between teams
     const matches = await generateMatches(
       finalConfig.numMatches!,
       teams,
       finalConfig.matchWinRate!
     );
 
-    // Return the created entities for potential further use
-    return {
-      players,
-      ladders,
-      teams,
-      matches,
-    };
+    return { players, ladders, teams, matches };
   } catch (error) {
     console.error("Error generating sample data:", error);
     throw new Error("Failed to generate sample data");
   } finally {
-    console.log("Sample data loaded");
+    console.log("Sample data generation complete");
   }
 }
 
 /**
- * Generate a small number of entities for quick testing
+ * Generates a smaller dataset for quick testing.
+ * @returns A promise that resolves to an object containing the generated data.
  */
 export async function addQuickSampleData() {
   return addSampleEntities({

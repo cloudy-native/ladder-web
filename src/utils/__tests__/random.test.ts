@@ -8,7 +8,7 @@ import {
   randomRating,
   randomRecentDate,
   randomTeamName,
-} from "../random";
+} from "@/utils/random";
 
 describe("random utility functions", () => {
   describe("randomFirstName", () => {

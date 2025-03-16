@@ -1,4 +1,16 @@
 import {
+  DialogActionTrigger,
+  DialogBody,
+  DialogCloseTrigger,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  Field,
+} from "@/components/ui";
+import { useTeamCreate } from "@/utils/hooks";
+import {
   Alert,
   Button,
   DialogRootProvider,
@@ -9,18 +21,6 @@ import {
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { IoClose, IoSave } from "react-icons/io5";
-import { useTeamCreate } from "../../utils/hooks";
-import {
-  DialogActionTrigger,
-  DialogBody,
-  DialogCloseTrigger,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../ui/dialog";
-import { Field } from "../ui/field";
 
 interface CreateTeamDialogProps {
   /**

@@ -28,3 +28,6 @@
 - [ ] Add ladder to TeamCard
 - [ ] Add logic in all places to highlight current players
 - [ ] Create index.ts for components and check we import from directory instead
+- [ ] Fix all pages to import ClientOnly from common component
+- [ ] Move home page to same level as other pages and name files the same
+- [ ] 

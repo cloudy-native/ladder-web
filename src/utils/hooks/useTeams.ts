@@ -1,19 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import {
   ladderClient,
   playerClient,
-  teamClient
+  teamClient,
 } from "@/utils/amplify-helpers";
 import { TeamWithPlayers } from "@/utils/crudl";
 import { filterNotNull } from "@/utils/data";
+import { useCallback, useEffect, useState } from "react";
 
+/**
+ * A custom hook to manage a list of teams, including fetching team data, handling loading states, and managing errors.  Fetches teams and their associated players and ladders.
+ * @returns An object containing the list of teams, loading state, error state, and a refresh function.
+ */
 export function useTeamList() {
   const [teamsWithPlayers, setTeams] = useState<TeamWithPlayers[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Fetches all teams and their associated player and ladder data.  Handles errors and updates the state accordingly.
+   */
   const fetchTeams = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -28,52 +35,34 @@ export function useTeamList() {
         return;
       }
 
-      console.log(`Fetched ${teamData.length} teams`);
+      console.log(`Fetched ${teamData?.length} teams`); // Added optional chaining
 
       // Create an array of promises to fetch players and ladder for each team in parallel
-      const teamsWithPlayersPromises = teamData.map(async (team) => {
-        try {
-          // Fetch player1 if it exists
-          let player1 = null;
-          if (team.player1Id) {
-            const player1Result = await playerClient().get({
-              id: team.player1Id,
-            });
-            player1 = player1Result.data;
-          }
+      const teamsWithPlayersPromises =
+        teamData?.map(async (team) => {
+          try {
+            // Fetch player1 and player2 using optional chaining and nullish coalescing
+            const player1 = team.player1Id
+              ? (await playerClient().get({ id: team.player1Id })).data || null
+              : null;
+            const player2 = team.player2Id
+              ? (await playerClient().get({ id: team.player2Id })).data || null
+              : null;
 
-          // Fetch player2 if it exists
-          let player2 = null;
-          if (team.player2Id) {
-            const player2Result = await playerClient().get({
-              id: team.player2Id,
-            });
-            player2 = player2Result.data;
-          }
+            // Fetch ladder using optional chaining and nullish coalescing
+            const ladder = team.ladderId
+              ? (await ladderClient().get({ id: team.ladderId })).data || null
+              : null;
 
-          // Fetch ladder for this team if it has one
-          let ladder = null;
-          if (team.ladderId) {
-            const ladderResult = await ladderClient().get({
-              id: team.ladderId,
-            });
-            ladder = ladderResult.data;
+            return { team, player1, player2, ladder };
+          } catch (err) {
+            console.error(
+              `Error fetching related data for team ${team.id}:`,
+              err
+            );
+            return null;
           }
-
-          return {
-            team,
-            player1,
-            player2,
-            ladder,
-          } as TeamWithPlayers;
-        } catch (err) {
-          console.error(
-            `Error fetching related data for team ${team.id}:`,
-            err
-          );
-          return null;
-        }
-      });
+        }) || []; // Handle case where teamData is null
 
       // Wait for all fetches to complete
       const result = await Promise.all(teamsWithPlayersPromises);
@@ -100,16 +89,29 @@ export function useTeamList() {
   };
 }
 
+/**
+ * A custom hook for creating new teams. Handles input validation, loading state, and error handling.
+ * @returns An object containing the createTeam function, loading state, and error state.
+ */
 export function useTeamCreate() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  /**
+   * Creates a new team. Handles input validation, API calls, and error handling.
+   * @param name - The name of the team.
+   * @param rating - The initial rating of the team. Defaults to 1200.
+   * @param player1Id - The ID of the first player in the team (optional).
+   * @returns The created team object or null if an error occurs.
+   */
   const createTeam = useCallback(
-    async (name: string, rating: string = "1200", player1Id?: string) => {
-      // Reset error state
+    async (
+      name: string,
+      rating: string = "1200",
+      player1Id?: string
+    ): Promise<any | null> => {
       setCreateError(null);
 
-      // Validate input
       if (!name.trim()) {
         setCreateError("Team name is required");
         return null;
@@ -126,8 +128,8 @@ export function useTeamCreate() {
       try {
         const { data: createdTeam, errors } = await teamClient().create({
           name: name.trim(),
-          rating: parsedRating !== 0 ? parsedRating || 1200 : 0,
-          player1Id: player1Id || undefined,
+          rating: parsedRating || 1200, // Use default rating if parsing fails
+          player1Id: player1Id,
         });
 
         if (errors) {
@@ -149,10 +151,98 @@ export function useTeamCreate() {
     []
   );
 
+  return { createTeam, isCreating, createError };
+}
+
+/**
+ * A custom hook for managing team-ladder associations. Provides functions to add and remove teams from ladders, handles loading and error states.
+ * @returns An object containing functions to add and remove teams from ladders, loading state, and error state.
+ */
+export function useTeamLadder() {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
+  /**
+   * Adds a team to a ladder. Handles API calls, error handling, and updates the state accordingly.
+   * @param teamId - The ID of the team to add.
+   * @param ladderId - The ID of the ladder to add the team to.
+   * @returns A promise that resolves to `true` if the team was successfully added to the ladder, `false` otherwise.
+   */
+  const addTeamToLadder = useCallback(
+    async (teamId: string, ladderId: string) => {
+      setUpdateError(null);
+      setIsUpdating(true);
+
+      try {
+        // Check if the team already has a ladder
+        const { data: team } = await teamClient().get({ id: teamId });
+
+        if (team?.ladderId === ladderId) {
+          console.log("Team already in this ladder");
+          return true; // Already on the ladder, no need to update
+        }
+
+        const { data: updatedTeam, errors } = await teamClient().update({
+          id: teamId,
+          ladderId: ladderId,
+        });
+
+        if (errors) {
+          console.error("Error adding team to ladder:", errors);
+          setUpdateError("Failed to add team to ladder");
+          return false;
+        }
+
+        console.log("Team added to ladder successfully:", updatedTeam);
+        return true;
+      } catch (error) {
+        console.error("Error adding team to ladder:", error);
+        setUpdateError("An unexpected error occurred");
+        return false;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * Removes a team from its associated ladder. Handles API calls, error handling, and updates the state accordingly.
+   * @param teamId - The ID of the team to remove from the ladder.
+   * @returns A promise that resolves to `true` if the team was successfully removed from the ladder, `false` otherwise.
+   */
+  const removeTeamFromLadder = useCallback(async (teamId: string) => {
+    setUpdateError(null);
+    setIsUpdating(true);
+
+    try {
+      const { errors } = await teamClient().update({
+        id: teamId,
+        ladderId: null, // Remove the ladder association
+      });
+
+      if (errors) {
+        console.error("Error removing team from ladder:", errors);
+        setUpdateError("Failed to remove team from ladder");
+        return false;
+      }
+
+      console.log("Team removed from ladder successfully");
+      return true;
+    } catch (error) {
+      console.error("Error removing team from ladder:", error);
+      setUpdateError("An unexpected error occurred");
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  }, []);
+
   return {
-    createTeam,
-    isCreating,
-    createError,
+    addTeamToLadder,
+    removeTeamFromLadder,
+    isUpdating,
+    updateError,
   };
 }
 
@@ -415,80 +505,3 @@ export function useTeamCreate() {
 //     joinError,
 //   };
 // }
-
-export function useTeamLadder() {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [updateError, setUpdateError] = useState<string | null>(null);
-
-  const addTeamToLadder = useCallback(
-    async (teamId: string, ladderId: string) => {
-      setUpdateError(null);
-      setIsUpdating(true);
-
-      try {
-        // Check if the team already has a ladder
-        const { data: team } = await teamClient().get({ id: teamId });
-
-        if (team?.ladderId === ladderId) {
-          console.log("Team already in this ladder");
-          return true;
-        }
-
-        const { data: updatedTeam, errors } = await teamClient().update({
-          id: teamId,
-          ladderId: ladderId,
-        });
-
-        if (errors) {
-          console.error("Error adding team to ladder:", errors);
-          setUpdateError("Failed to add team to ladder");
-          return false;
-        }
-
-        console.log("Team added to ladder successfully:", updatedTeam);
-        return true;
-      } catch (error) {
-        console.error("Error adding team to ladder:", error);
-        setUpdateError("An unexpected error occurred");
-        return false;
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-    []
-  );
-
-  const removeTeamFromLadder = useCallback(async (teamId: string) => {
-    setUpdateError(null);
-    setIsUpdating(true);
-
-    try {
-      const { errors } = await teamClient().update({
-        id: teamId,
-        ladderId: null, // Remove the ladder association
-      });
-
-      if (errors) {
-        console.error("Error removing team from ladder:", errors);
-        setUpdateError("Failed to remove team from ladder");
-        return false;
-      }
-
-      console.log("Team removed from ladder successfully");
-      return true;
-    } catch (error) {
-      console.error("Error removing team from ladder:", error);
-      setUpdateError("An unexpected error occurred");
-      return false;
-    } finally {
-      setIsUpdating(false);
-    }
-  }, []);
-
-  return {
-    addTeamToLadder,
-    removeTeamFromLadder,
-    isUpdating,
-    updateError,
-  };
-}
